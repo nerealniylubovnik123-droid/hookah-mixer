@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Кальянный Миксер</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg:#000; --panel:#0c0c0c; --panel-2:#151515;
+  --border:#242424; --text:#fff; --muted:#f0e9db; --accent:#f0b85a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100vw;height:100vh;background:var(--bg);color:var(--text);
+font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;}
+.hidden{opacity:0;pointer-events:none;transition:opacity 1s ease;}
+#welcome{
+  position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;background:url('smoke.gif') center/cover no-repeat;background-color:#000;
+  z-index:10;text-align:center;transition:opacity 1s ease;}
+#welcome h1{color:var(--accent);font-size:28px;margin-bottom:20px;
+text-shadow:0 0 12px rgba(240,184,90,0.6), 0 0 24px rgba(240,184,90,0.25);
+animation: glow 3.2s ease-in-out infinite;}
+@keyframes glow{0%,100%{text-shadow:0 0 10px rgba(240,184,90,.45),0 0 18px rgba(240,184,90,.2);opacity:.96;}
+50%{text-shadow:0 0 18px rgba(240,184,90,.85),0 0 30px rgba(240,184,90,.35);opacity:1;}}
+#welcome img.logo-main{width:200px;margin-bottom:20px;animation:float 6s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+#welcome .enter-btn{width:118px;height:118px;border-radius:50%;
+background:radial-gradient(circle at 50% 50%,#f0b85a 0%,#d79e45 60%,#000 100%);
+display:flex;justify-content:center;align-items:center;
+box-shadow:0 0 25px rgba(240,184,90,0.5);
+cursor:pointer;transition:transform .25s ease,box-shadow .25s ease;
+animation:pulse 2.6s ease-in-out infinite;}
+#welcome .enter-btn:hover{transform:scale(1.08);box-shadow:0 0 35px rgba(240,184,90,0.8);}
+@keyframes pulse{0%,100%{box-shadow:0 0 20px rgba(240,184,90,.45);transform:scale(1);}
+50%{box-shadow:0 0 36px rgba(240,184,90,.85);transform:scale(1.04);}}
+#root{opacity:0;transition:opacity 1s ease;overflow-y:auto;height:100vh;}
+.container{max-width:420px;margin:0 auto;padding:16px;display:grid;gap:16px}
+header.title{text-align:center;font-size:18px;font-weight:600;color:var(--muted)}
+header .user-info{margin-top:6px;font-size:14px;opacity:.8;}
+.tabs{display:grid;gap:8px;background:var(--panel-2);padding:6px;border-radius:14px;}
+.tab-btn{background:transparent;border:none;color:#fff;padding:10px 12px;border-radius:10px;cursor:pointer;}
+.tab-btn.active{background:var(--accent);color:#000}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px}
+.card .hd{padding:14px 14px 0 14px}
+.card .hd h3{margin:0;font-size:18px}
+.card .bd{padding:12px 14px 14px 14px}
+.mix-card{background:var(--panel-2);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<div id="welcome">
+  <h1>Добро пожаловать<br>в мир кальянной миксологии</h1>
+  <img src="Logo Black.png" class="logo-main" alt="logo">
+  <div class="enter-btn" onclick="enterApp()">
+    <img src="enter.png" alt="enter" style="width:60%;border-radius:50%">
+  </div>
+</div>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect}=React;
+let tg=window.Telegram?.WebApp||null;
+let CURRENT_USER_ID=0,CURRENT_USERNAME="",CURRENT_USER_NAME="Гость";
+
+try{
+  if(tg && tg.initDataUnsafe?.user){
+    const u=tg.initDataUnsafe.user;
+    CURRENT_USER_ID=u.id;
+    CURRENT_USERNAME=(u.username||"").toLowerCase();
+    CURRENT_USER_NAME=[u.first_name,u.last_name].filter(Boolean).join(" ")||"Гость";
+  }
+}catch(e){console.log('Auth fallback',e);}
+
+const ADMIN_USERNAMES=["tutenhaman","brgmnstrr","adminname"];
+const IS_ADMIN=ADMIN_USERNAMES.includes(CURRENT_USERNAME);
+
+function App(){
+ const [tab,setTab]=useState('community');
+ const [brands,setBrands]=useState([]);
+ const [mixes,setMixes]=useState([]);
+
+ useEffect(()=>{
+   fetch('/api/library').then(r=>r.json()).then(setBrands);
+   fetch('/api/mixes').then(r=>r.json()).then(setMixes);
+ },[]);
+
+ return(<div className="container">
+   <header className="title">
+     Кальянный Миксер
+     <div className="user-info">Привет, {CURRENT_USER_NAME}! ({IS_ADMIN?'Админ':'Гость'})</div>
+   </header>
+   <div className="tabs" style={{gridTemplateColumns:IS_ADMIN?'1fr 1fr 1fr':'1fr 1fr'}}>
+     <button className={tab==='community'?'tab-btn active':'tab-btn'} onClick={()=>setTab('community')}>Миксы</button>
+     <button className={tab==='builder'?'tab-btn active':'tab-btn'} onClick={()=>setTab('builder')}>Конструктор</button>
+     {IS_ADMIN&&<button className={tab==='admin'?'tab-btn active':'tab-btn'} onClick={()=>setTab('admin')}>Админ</button>}
+   </div>
+   {tab==='community'&&<Community mixes={mixes}/>}
+   {tab==='builder'&&<Builder brands={brands}/>}
+   {IS_ADMIN&&tab==='admin'&&<Admin brands={brands} setBrands={setBrands}/>}
+ </div>);
+}
+
+function Community({mixes}){
+ return(<div className="card"><div className="hd"><h3>Библиотека миксов</h3></div>
+ <div className="bd">{mixes.map(m=>(
+   <div key={m.id} className="mix-card"><b>{m.name}</b><div className="tiny">Автор: {m.author}</div></div>
+ ))}</div></div>);
+}
+function Builder({brands}){
+ return(<div className="card"><div className="hd"><h3>Конструктор</h3></div><div className="bd">Выберите бренд</div></div>);
+}
+function Admin(){return(<div className="card"><div className="hd"><h3>Админ</h3></div><div className="bd">Настройки библиотеки</div></div>);}
+</script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ window.enterApp=function(){
+   if(window.appStarted)return;window.appStarted=true;
+   const w=document.getElementById('welcome');const r=document.getElementById('root');
+   w.classList.add('hidden');setTimeout(()=>{w.style.display='none';r.style.opacity='1';
+   ReactDOM.createRoot(r).render(React.createElement(App));},800);
+ };
+});
+</script>
+</body>
+</html>
