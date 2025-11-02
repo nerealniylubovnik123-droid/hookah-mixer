@@ -17,6 +17,22 @@ const IS_ADMIN = ADMIN_USERNAMES.includes(CURRENT_USERNAME) || ADMIN_IDS.include
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
+const TASTE_COLORS = {
+  "сладкий": "#f5a623",
+  "кислый": "#f56d6d",
+  "свежий": "#4fc3f7",
+  "десертный": "#d18df0",
+  "пряный": "#ff8c00",
+  "чайный": "#c1b684",
+  "алкогольный": "#a970ff",
+  "гастрономический": "#90a955",
+  "травяной": "#6ab04c"
+};
+function tasteColor(t) {
+  const key = (t || "").toLowerCase();
+  return TASTE_COLORS[key] || "#ccc";
+}
+
 function App() {
   const [tab, setTab] = useState("community");
   const [brands, setBrands] = useState([]);
@@ -24,14 +40,14 @@ function App() {
   const [likes, setLikes] = useState({});
   const [banned, setBanned] = useState([]);
 
-  // === load data ===
   useEffect(() => {
     fetch("/api/library").then(r => r.json()).then(setBrands).catch(console.error);
     fetch("/api/mixes").then(r => r.json()).then(setMixes).catch(console.error);
     try { setBanned(JSON.parse(localStorage.getItem("bannedWords") || "[]")); } catch {}
   }, []);
 
-  // === likes ===
+  const reloadMixes = () => fetch("/api/mixes").then(r => r.json()).then(setMixes);
+
   const toggleLike = async (id) => {
     const already = !!likes[id];
     const delta = already ? -1 : 1;
@@ -47,7 +63,13 @@ function App() {
     }
   };
 
-  // === builder ===
+  const deleteMix = async (id) => {
+    if (!confirm("Удалить этот микс?")) return;
+    await fetch(`/api/mixes/${id}`, { method: "DELETE" });
+    reloadMixes();
+  };
+
+  // === BUILDER ===
   const [selected, setSelected] = useState(null);
   const [parts, setParts] = useState([]);
   const [search, setSearch] = useState("");
@@ -55,8 +77,6 @@ function App() {
   const total = parts.reduce((a, b) => a + b.percent, 0);
   const avg = parts.length && total > 0 ? Math.round(parts.reduce((a, p) => a + p.percent * p.strength, 0) / total) : 0;
   const remaining = Math.max(0, 100 - total);
-
-  // итоговый вкус (уникальные категории taste)
   const finalTaste = [...new Set(parts.map(p => (p.taste || "").trim()).filter(Boolean))].join(", ") || "—";
 
   const addFlavor = (brandId, fl) => {
@@ -83,27 +103,13 @@ function App() {
     if (!title) return;
     const bad = banned.find(w => title.toLowerCase().includes(String(w).toLowerCase()));
     if (bad) return alert(`❌ Запрещённое слово: \"${bad}\"`);
-    const mix = {
-      name: title.trim(),
-      author: CURRENT_USER_NAME,
-      flavors: parts,
-      avgStrength: avg,
-      finalTaste
-    };
-    const r = await fetch("/api/mixes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mix)
-    });
+    const mix = { name: title.trim(), author: CURRENT_USER_NAME, flavors: parts, avgStrength: avg, finalTaste };
+    const r = await fetch("/api/mixes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mix) });
     const j = await r.json();
-    if (j.success) {
-      alert("✅ Микс сохранён");
-      setParts([]);
-      fetch("/api/mixes").then(r => r.json()).then(setMixes);
-    }
+    if (j.success) { alert("✅ Микс сохранён"); setParts([]); reloadMixes(); }
   };
 
-  // === admin ===
+  // === ADMIN ===
   const [brandName, setBrandName] = useState("");
   const [flavorName, setFlavorName] = useState("");
   const [flavorTaste, setFlavorTaste] = useState("");
@@ -117,7 +123,7 @@ function App() {
   const addBrand = () => {
     const name = brandName.trim();
     if (!name) return;
-    const id = name.toLowerCase().replace(/\\s+/g, "-");
+    const id = name.toLowerCase().replace(/\s+/g, "-");
     const newLib = [...brands, { id, name, hidden: false, flavors: [] }];
     setBrands(newLib); saveLibrary(newLib); setBrandName("");
   };
@@ -126,7 +132,7 @@ function App() {
     if (!b) return;
     const name = flavorName.trim();
     if (!name) return;
-    const fl = { id: name.toLowerCase().replace(/\\s+/g, "-"), name, strength: flavorStrength, taste: flavorTaste, hidden: false };
+    const fl = { id: name.toLowerCase().replace(/\s+/g, "-"), name, strength: flavorStrength, taste: flavorTaste, hidden: false };
     const newLib = brands.map(x => x.id === b.id ? { ...x, flavors: [...x.flavors, fl] } : x);
     setBrands(newLib); saveLibrary(newLib); setFlavorName(""); setFlavorTaste("");
   };
@@ -139,10 +145,6 @@ function App() {
     setBrands(newLib); saveLibrary(newLib);
   };
   const delBrand = id => { const newLib = brands.filter(b => b.id !== id); setBrands(newLib); saveLibrary(newLib); };
-  const delFlavor = (bid, fid) => {
-    const newLib = brands.map(b => b.id === bid ? { ...b, flavors: b.flavors.filter(f => f.id !== fid) } : b);
-    setBrands(newLib); saveLibrary(newLib);
-  };
 
   const [banInput, setBanInput] = useState("");
   const addBan = () => {
@@ -156,20 +158,13 @@ function App() {
     setBanned(list); localStorage.setItem("bannedWords", JSON.stringify(list));
   };
 
-  // === dynamic categories ===
-  const tasteCategories = Array.from(
-    new Set(
-      mixes.flatMap(m => m.flavors.map(f => (f.taste || "").trim().toLowerCase())).filter(Boolean)
-    )
-  );
-
+  const tasteCategories = Array.from(new Set(mixes.flatMap(m => m.flavors.map(f => (f.taste || "").trim().toLowerCase())).filter(Boolean)));
   const [pref, setPref] = useState("all");
   const [strength, setStrength] = useState(5);
   const filteredMixes = mixes
     .filter(m => pref === "all" || (m.finalTaste || "").toLowerCase().includes(pref))
     .filter(m => Math.abs((m.avgStrength || 0) - strength) <= 1);
 
-  // === UI ===
   return (
     <div className="container">
       <header className="title">Кальянный Миксер</header>
@@ -179,7 +174,7 @@ function App() {
         {IS_ADMIN && <button className={"tab-btn" + (tab === 'admin' ? ' active' : '')} onClick={() => setTab('admin')}>Админ</button>}
       </div>
 
-      {/* === COMMUNITY === */}
+      {/* COMMUNITY */}
       {tab === 'community' && (
         <div className="card">
           <div className="hd"><h3>Рекомендации</h3><p className="desc">Выберите настроение и крепость</p></div>
@@ -202,9 +197,17 @@ function App() {
                       <div style={{ fontWeight: 600 }}>{m.name}</div>
                       <div className="tiny muted">от {m.author}</div>
                     </div>
-                    <button className={"btn " + (likes[m.id] ? 'accent' : '')} onClick={() => toggleLike(m.id)}>❤ {m.likes}</button>
+                    <div className="row">
+                      <button className={"btn small " + (likes[m.id] ? 'accent' : '')} onClick={() => toggleLike(m.id)}>❤ {m.likes}</button>
+                      {IS_ADMIN && <button className="btn small danger" onClick={() => deleteMix(m.id)}>✕</button>}
+                    </div>
                   </div>
-                  <div className="tiny">Крепость: <b>{m.avgStrength}</b> • Вкус: <b>{m.finalTaste || "—"}</b></div>
+                  <div className="tiny">Крепость: <b>{m.avgStrength}</b></div>
+                  <div className="row" style={{ flexWrap: "wrap", gap: "6px", margin: "6px 0" }}>
+                    {(m.finalTaste || "").split(",").map(t => (
+                      <span key={t} className="badge" style={{ background: tasteColor(t), color: "#000", border: "none" }}>{t}</span>
+                    ))}
+                  </div>
                   <div className="tiny muted">Состав: {m.flavors.map(p => `${p.name} ${p.percent}%`).join(' + ')}</div>
                 </div>
               ))}
@@ -213,7 +216,7 @@ function App() {
         </div>
       )}
 
-      {/* === BUILDER === */}
+      {/* BUILDER */}
       {tab === 'builder' && (
         <>
           <div className="card">
@@ -259,14 +262,21 @@ function App() {
                   <div className="tiny muted">{p.percent}%</div>
                 </div>
               ))}
-              <div className="tiny muted">Итого: {total}% (осталось {100 - total}%) • Крепость {avg} • Вкус: {finalTaste}</div>
+              <div className="tiny muted">
+                Итого: {total}% (осталось {100 - total}%) • Крепость {avg} • Вкус: {finalTaste}
+              </div>
+              <div className="row" style={{ flexWrap: "wrap", gap: "6px" }}>
+                {finalTaste.split(",").map(t => (
+                  <span key={t} className="badge" style={{ background: tasteColor(t), color: "#000", border: "none" }}>{t}</span>
+                ))}
+              </div>
               <button className={"btn " + (total === 100 ? 'accent' : '')} onClick={saveMix} disabled={total !== 100}>Сохранить</button>
             </div>
           </div>
         </>
       )}
 
-      {/* === ADMIN === */}
+      {/* ADMIN */}
       {IS_ADMIN && tab === 'admin' && (
         <>
           <div className="card">
