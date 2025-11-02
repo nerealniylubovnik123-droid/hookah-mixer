@@ -28,10 +28,7 @@ const TASTE_COLORS = {
   "гастрономический": "#90a955",
   "травяной": "#6ab04c"
 };
-function tasteColor(t) {
-  const key = (t || "").toLowerCase();
-  return TASTE_COLORS[key] || "#ccc";
-}
+const tasteColor = t => TASTE_COLORS[(t || "").toLowerCase()] || "#ccc";
 
 function App() {
   const [tab, setTab] = useState("community");
@@ -65,8 +62,17 @@ function App() {
 
   const deleteMix = async (id) => {
     if (!confirm("Удалить этот микс?")) return;
-    await fetch(`/api/mixes/${id}`, { method: "DELETE" });
-    reloadMixes();
+    const r = await fetch(`/api/mixes/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-id": CURRENT_USER_ID || "" }
+    });
+    const j = await r.json().catch(() => ({}));
+    if (j.success) {
+      alert("✅ Микс удалён");
+      reloadMixes();
+    } else {
+      alert("⚠️ Ошибка удаления");
+    }
   };
 
   // === BUILDER ===
@@ -117,7 +123,7 @@ function App() {
   const [brandForFlavor, setBrandForFlavor] = useState("");
 
   const saveLibrary = async (lib) => {
-    await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(lib) });
+    await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-id": CURRENT_USER_ID || "" }, body: JSON.stringify(lib) });
   };
 
   const addBrand = () => {
