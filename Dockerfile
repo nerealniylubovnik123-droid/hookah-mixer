@@ -1,7 +1,13 @@
-FROM node:18-alpine
+# Используем Node.js 20
+FROM node:20
+
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm install
+RUN npm install --production
+
 COPY . .
-EXPOSE 3000
+
+EXPOSE 8080
+
 CMD ["npm", "start"]

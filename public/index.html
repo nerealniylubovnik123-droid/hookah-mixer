@@ -1,126 +1,48 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Кальянный Миксер</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<style>
-body{margin:0;background:#000;color:#fff;font-family:sans-serif;}
-#welcome{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;
-align-items:center;justify-content:center;z-index:10;text-align:center;}
-#welcome h1{color:#f0b85a;margin-bottom:20px;}
-#welcome button{padding:12px 22px;border:none;border-radius:10px;background:#f0b85a;
-color:#000;font-weight:bold;cursor:pointer;}
-header{text-align:center;margin:10px 0;}
-.tabs{display:grid;gap:6px;background:#111;padding:6px;border-radius:10px;
-max-width:400px;margin:10px auto;}
-.tab-btn{background:transparent;border:none;color:#fff;padding:10px 12px;border-radius:10px;cursor:pointer;}
-.tab-btn.active{background:#f0b85a;color:#000;}
-.container{max-width:420px;margin:0 auto;padding:10px;}
-.card{background:#0c0c0c;border:1px solid #242424;border-radius:16px;margin-bottom:10px;padding:12px;}
-input,select,button{width:100%;margin-top:6px;padding:8px;border-radius:8px;
-border:1px solid #333;background:#111;color:#fff;}
-button{cursor:pointer;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Кальянный Миксер</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+<!-- Вступительный экран -->
 <div id="welcome">
   <h1>Добро пожаловать<br>в мир кальянной миксологии</h1>
-  <img src="Logo Black.png" alt="logo" style="width:200px;margin-bottom:20px;">
-  <button id="enterBtn">Войти</button>
+  <img src="logo.png" class="logo-main" alt="logo">
+  <div class="enter-btn" onclick="enterApp()">
+    <img src="enter.png" alt="enter" style="width:60%;border-radius:50%">
+  </div>
 </div>
 
-<header>
-  <h2>Кальянный Миксер</h2>
-  <div id="user-info"></div>
-</header>
-<div class="tabs" id="tabs"></div>
-<div class="container" id="content"></div>
+<!-- Основное приложение -->
+<div id="root"></div>
+
+<!-- React -->
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script type="text/babel" src="app.js"></script>
 
 <script>
-const tg = window.Telegram?.WebApp || null;
-let user = tg?.initDataUnsafe?.user || {};
-let username = (user.username||"guest").toLowerCase();
-let name = user.first_name||"Гость";
-const ADMINS=["tutenhaman","brgmnstrr"];
-const IS_ADMIN = ADMINS.includes(username);
-document.getElementById("user-info").innerText=`Привет, ${name} (${IS_ADMIN?'Админ':'Гость'})`;
-
-const tabs=[{id:"mixes",label:"Миксы"},{id:"builder",label:"Конструктор"},...(IS_ADMIN?[{id:"admin",label:"Админ"}]:[])];
-const tabsDiv=document.getElementById("tabs");
-tabs.forEach(t=>{
-  const b=document.createElement("button");
-  b.className="tab-btn"+(t.id==="mixes"?" active":"");
-  b.innerText=t.label;
-  b.onclick=()=>selectTab(t.id);
-  tabsDiv.appendChild(b);
-});
-let currentTab="mixes";
-function selectTab(id){
-  currentTab=id;
-  document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.remove("active"));
-  [...tabsDiv.children].find(b=>b.innerText===tabs.find(x=>x.id===id).label).classList.add("active");
-  render();
-}
-
-async function apiGet(u){try{const r=await fetch(u);return await r.json();}catch{return [];}}
-async function apiPost(u,d){await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});}
-async function apiDel(u){await fetch(u,{method:"DELETE"});}
-
-let brands=[],mixes=[];
-async function load(){brands=await apiGet("/api/library");mixes=await apiGet("/api/mixes");render();}
-function render(){
-  const c=document.getElementById("content");c.innerHTML="";
-  if(currentTab==="mixes")renderMixes(c);
-  else if(currentTab==="builder")renderBuilder(c);
-  else if(currentTab==="admin"&&IS_ADMIN)renderAdmin(c);
-}
-function renderMixes(c){
-  const box=document.createElement("div");box.className="card";
-  box.innerHTML="<h3>Библиотека миксов</h3>"+mixes.map(m=>`
-  <div style='border-bottom:1px solid #333;padding:6px 0'>
-  <b>${m.name}</b> (${m.taste}, ${m.strength})<br>Автор: ${m.author}
-  <div><button class='like' data-id='${m.id}'>❤️ ${m.likes?.length||0}</button>${IS_ADMIN?` <button class='delmix' data-id='${m.id}'>Удалить</button>`:""}</div></div>`).join("");
-  c.appendChild(box);
-  c.querySelectorAll(".like").forEach(b=>b.onclick=()=>apiPost(`/api/mixes/${b.dataset.id}/like`,{user:username}).then(load));
-  if(IS_ADMIN)c.querySelectorAll(".delmix").forEach(b=>b.onclick=()=>apiDel(`/api/mixes/${b.dataset.id}`).then(load));
-}
-function renderBuilder(c){
-  const card=document.createElement("div");card.className="card";
-  card.innerHTML=`<h3>Конструктор</h3><input id='mixName' placeholder='Название микса'>
-  <input id='search' placeholder='Поиск вкуса'><div id='flavors'></div>
-  <button id='saveMix'>Сохранить микс</button><div id='res'></div>`;
-  c.appendChild(card);
-  const s=document.getElementById("search"),f=document.getElementById("flavors"),r=document.getElementById("res");
-  function update(){const q=s.value.toLowerCase();f.innerHTML="";brands.forEach(b=>b.flavors.filter(fl=>!q||fl.title.toLowerCase().includes(q)||fl.taste.toLowerCase().includes(q)).forEach(fl=>{
-    const div=document.createElement("div");div.innerHTML=`<input type='checkbox' value='${b.name}|${fl.title}|${fl.profile}|${fl.strength}'> ${b.name} - ${fl.title} (${fl.profile}, ${fl.strength})`;f.appendChild(div);}));
-  }
-  s.oninput=update;update();
-  document.getElementById("saveMix").onclick=async()=>{
-    const n=document.getElementById("mixName").value||"Без названия";
-    const sel=[...f.querySelectorAll("input:checked")].map(x=>x.value.split("|"));
-    if(!sel.length)return;
-    const prof=[...new Set(sel.map(x=>x[2]))].join(", ");const str=Math.round(sel.map(x=>+x[3]).reduce((a,b)=>a+b,0)/sel.length);
-    await apiPost("/api/mixes",{name:n,author:username,composition:sel.map(x=>x[0]+" "+x[1]),taste:prof,strength:str});
-    r.innerHTML=`<p>Микс сохранён (${prof}, ${str})</p>`;load();
+document.addEventListener("DOMContentLoaded", ()=>{
+  window.enterApp = function(){
+    if(window.appStarted) return;
+    window.appStarted = true;
+    const w = document.getElementById("welcome");
+    const r = document.getElementById("root");
+    if(!w || !r) return;
+    w.classList.add("hidden");
+    setTimeout(()=>{
+      w.style.display="none";
+      r.style.opacity="1";
+      ReactDOM.createRoot(r).render(React.createElement(App));
+    },800);
   };
-}
-function renderAdmin(c){
-  const addB=document.createElement("div");addB.className="card";
-  addB.innerHTML=`<h3>Добавить бренд</h3><input id='bName'><button id='addB'>Добавить</button>`;
-  c.appendChild(addB);
-  document.getElementById("addB").onclick=()=>{const v=document.getElementById("bName").value;if(!v)return;apiPost("/api/library",{action:"addBrand",name:v}).then(load);};
-  const addF=document.createElement("div");addF.className="card";
-  addF.innerHTML=`<h3>Добавить вкус</h3>
-  <select id='selBrand'><option value=''>Выбери бренд</option>${brands.map(b=>`<option>${b.name}</option>`).join("")}</select>
-  <input id='fTitle' placeholder='Название вкуса'><input id='fTaste' placeholder='Какой вкус'>
-  <input id='fProfile' placeholder='Описание (сладкий...)'><input id='fStrength' type='number' placeholder='Крепость 1-5'>
-  <button id='addF'>Добавить</button>`;
-  c.appendChild(addF);
-  document.getElementById("addF").onclick=()=>{const b=document.getElementById("selBrand").value,t=document.getElementById("fTitle").value,ta=document.getElementById("fTaste").value,p=document.getElementById("fProfile").value,s=document.getElementById("fStrength").value;if(!b||!t)return;apiPost("/api/library",{action:"addFlavor",brand:b,flavor:{title:t,taste:ta,profile:p,strength:+s}}).then(load);};
-}
-document.getElementById("enterBtn").onclick=()=>{document.getElementById("welcome").style.display="none";load();};
+});
 </script>
 </body>
 </html>
