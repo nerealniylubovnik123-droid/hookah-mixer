@@ -1,4 +1,3 @@
-// public/app.js
 const { useState, useEffect } = React;
 
 let tg = window.Telegram?.WebApp || null;
@@ -25,14 +24,14 @@ function App() {
   const [likes, setLikes] = useState({});
   const [banned, setBanned] = useState([]);
 
-  // load from server
+  // === load data ===
   useEffect(() => {
     fetch("/api/library").then(r => r.json()).then(setBrands).catch(console.error);
     fetch("/api/mixes").then(r => r.json()).then(setMixes).catch(console.error);
     try { setBanned(JSON.parse(localStorage.getItem("bannedWords") || "[]")); } catch {}
   }, []);
 
-  // likes
+  // === likes ===
   const toggleLike = async (id) => {
     const already = !!likes[id];
     const delta = already ? -1 : 1;
@@ -48,7 +47,7 @@ function App() {
     }
   };
 
-  // builder
+  // === builder ===
   const [selected, setSelected] = useState(null);
   const [parts, setParts] = useState([]);
   const [search, setSearch] = useState("");
@@ -57,10 +56,16 @@ function App() {
   const avg = parts.length && total > 0 ? Math.round(parts.reduce((a, p) => a + p.percent * p.strength, 0) / total) : 0;
   const remaining = Math.max(0, 100 - total);
 
+  // итоговый вкус (уникальные категории taste)
+  const finalTaste = [...new Set(parts.map(p => (p.taste || "").trim()).filter(Boolean))].join(", ") || "—";
+
   const addFlavor = (brandId, fl) => {
     if (remaining <= 0) return;
     const key = `${brandId}:${fl.id}`;
-    setParts(p => p.some(x => x.key === key) ? p : [...p, { key, brandId, flavorId: fl.id, name: fl.name, taste: fl.taste, strength: fl.strength, percent: Math.min(20, remaining) }]);
+    setParts(p => p.some(x => x.key === key)
+      ? p
+      : [...p, { key, brandId, flavorId: fl.id, name: fl.name, taste: fl.taste, strength: fl.strength, percent: Math.min(20, remaining) }]
+    );
   };
   const updatePct = (key, val) => {
     setParts(prev => {
@@ -77,18 +82,28 @@ function App() {
     const title = prompt("Введите название микса:");
     if (!title) return;
     const bad = banned.find(w => title.toLowerCase().includes(String(w).toLowerCase()));
-    if (bad) return alert(`❌ Запрещённое слово: "${bad}"`);
-    const mix = { name: title.trim(), author: CURRENT_USER_NAME, flavors: parts, avgStrength: avg };
+    if (bad) return alert(`❌ Запрещённое слово: \"${bad}\"`);
+    const mix = {
+      name: title.trim(),
+      author: CURRENT_USER_NAME,
+      flavors: parts,
+      avgStrength: avg,
+      finalTaste
+    };
     const r = await fetch("/api/mixes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(mix)
     });
     const j = await r.json();
-    if (j.success) { alert("✅ Микс сохранён"); setParts([]); fetch("/api/mixes").then(r => r.json()).then(setMixes); }
+    if (j.success) {
+      alert("✅ Микс сохранён");
+      setParts([]);
+      fetch("/api/mixes").then(r => r.json()).then(setMixes);
+    }
   };
 
-  // admin
+  // === admin ===
   const [brandName, setBrandName] = useState("");
   const [flavorName, setFlavorName] = useState("");
   const [flavorTaste, setFlavorTaste] = useState("");
@@ -102,7 +117,7 @@ function App() {
   const addBrand = () => {
     const name = brandName.trim();
     if (!name) return;
-    const id = name.toLowerCase().replace(/\s+/g, "-");
+    const id = name.toLowerCase().replace(/\\s+/g, "-");
     const newLib = [...brands, { id, name, hidden: false, flavors: [] }];
     setBrands(newLib); saveLibrary(newLib); setBrandName("");
   };
@@ -111,7 +126,7 @@ function App() {
     if (!b) return;
     const name = flavorName.trim();
     if (!name) return;
-    const fl = { id: name.toLowerCase().replace(/\s+/g, "-"), name, strength: flavorStrength, taste: flavorTaste, hidden: false };
+    const fl = { id: name.toLowerCase().replace(/\\s+/g, "-"), name, strength: flavorStrength, taste: flavorTaste, hidden: false };
     const newLib = brands.map(x => x.id === b.id ? { ...x, flavors: [...x.flavors, fl] } : x);
     setBrands(newLib); saveLibrary(newLib); setFlavorName(""); setFlavorTaste("");
   };
@@ -141,13 +156,20 @@ function App() {
     setBanned(list); localStorage.setItem("bannedWords", JSON.stringify(list));
   };
 
-  const DIR = ["десертный", "кислый", "травяной", "пряный", "чайный", "сладкий", "свежий", "алкогольный", "гастрономический"];
+  // === dynamic categories ===
+  const tasteCategories = Array.from(
+    new Set(
+      mixes.flatMap(m => m.flavors.map(f => (f.taste || "").trim().toLowerCase())).filter(Boolean)
+    )
+  );
+
   const [pref, setPref] = useState("all");
   const [strength, setStrength] = useState(5);
-  const rec = mixes
-    .filter(m => pref === "all" || (m.flavors || []).some(p => (p.taste || "").toLowerCase().includes(pref)))
+  const filteredMixes = mixes
+    .filter(m => pref === "all" || (m.finalTaste || "").toLowerCase().includes(pref))
     .filter(m => Math.abs((m.avgStrength || 0) - strength) <= 1);
 
+  // === UI ===
   return (
     <div className="container">
       <header className="title">Кальянный Миксер</header>
@@ -157,27 +179,33 @@ function App() {
         {IS_ADMIN && <button className={"tab-btn" + (tab === 'admin' ? ' active' : '')} onClick={() => setTab('admin')}>Админ</button>}
       </div>
 
+      {/* === COMMUNITY === */}
       {tab === 'community' && (
         <div className="card">
           <div className="hd"><h3>Рекомендации</h3><p className="desc">Выберите настроение и крепость</p></div>
           <div className="bd">
             <div className="grid-2">
               <button className={"btn " + (pref === 'all' ? 'accent' : '')} onClick={() => setPref('all')}>Все</button>
-              {DIR.map(t => <button key={t} className={"btn " + (pref === t ? 'accent' : '')} onClick={() => setPref(t)}>{t}</button>)}
+              {tasteCategories.map(t => (
+                <button key={t} className={"btn " + (pref === t ? 'accent' : '')} onClick={() => setPref(t)}>{t}</button>
+              ))}
             </div>
             <div className="sep"></div>
             <div>Крепость: <b>{strength}</b></div>
             <input type="range" min="1" max="10" value={strength} onChange={e => setStrength(+e.target.value)} />
             <div className="sep"></div>
             <div className="grid">
-              {rec.map(m => (
+              {filteredMixes.map(m => (
                 <div key={m.id} className="mix-card">
                   <div className="row between">
-                    <div><div style={{ fontWeight: 600 }}>{m.name}</div><div className="tiny muted">от {m.author}</div></div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{m.name}</div>
+                      <div className="tiny muted">от {m.author}</div>
+                    </div>
                     <button className={"btn " + (likes[m.id] ? 'accent' : '')} onClick={() => toggleLike(m.id)}>❤ {m.likes}</button>
                   </div>
-                  <div className="tiny">Крепость: <b>{m.avgStrength}</b></div>
-                  <div className="tiny muted">Состав: {(m.flavors || []).map(p => `${p.name} ${p.percent}%`).join(' + ')}</div>
+                  <div className="tiny">Крепость: <b>{m.avgStrength}</b> • Вкус: <b>{m.finalTaste || "—"}</b></div>
+                  <div className="tiny muted">Состав: {m.flavors.map(p => `${p.name} ${p.percent}%`).join(' + ')}</div>
                 </div>
               ))}
             </div>
@@ -185,6 +213,7 @@ function App() {
         </div>
       )}
 
+      {/* === BUILDER === */}
       {tab === 'builder' && (
         <>
           <div className="card">
@@ -222,19 +251,22 @@ function App() {
             <div className="bd grid">
               {parts.map(p => (
                 <div key={p.key} className="mix-card">
-                  <div className="row between"><div><b>{p.name}</b><div className="tiny muted">{p.taste}</div></div>
-                    <button className="btn small" onClick={() => removePart(p.key)}>×</button></div>
+                  <div className="row between">
+                    <div><b>{p.name}</b><div className="tiny muted">{p.taste}</div></div>
+                    <button className="btn small" onClick={() => removePart(p.key)}>×</button>
+                  </div>
                   <input type="range" min="0" max="100" step="5" value={p.percent} onChange={e => updatePct(p.key, +e.target.value)} />
                   <div className="tiny muted">{p.percent}%</div>
                 </div>
               ))}
-              <div className="tiny muted">Итого: {total}% (осталось {100 - total}%) • Крепость {avg}</div>
+              <div className="tiny muted">Итого: {total}% (осталось {100 - total}%) • Крепость {avg} • Вкус: {finalTaste}</div>
               <button className={"btn " + (total === 100 ? 'accent' : '')} onClick={saveMix} disabled={total !== 100}>Сохранить</button>
             </div>
           </div>
         </>
       )}
 
+      {/* === ADMIN === */}
       {IS_ADMIN && tab === 'admin' && (
         <>
           <div className="card">
