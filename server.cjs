@@ -187,6 +187,20 @@ app.post("/api/mixes/:id/like", (req, res) => {
   res.json({ ok: true, likes: mix.likesCount, liked });
 });
 
+// === ensure data directory and json files exist ===
+import fs from "fs";
+import path from "path";
+
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+const LIB_FILE = path.join(DATA_DIR, "library.json");
+const MIX_FILE = path.join(DATA_DIR, "mixes.json");
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(LIB_FILE)) fs.writeFileSync(LIB_FILE, "[]");
+if (!fs.existsSync(MIX_FILE)) fs.writeFileSync(MIX_FILE, "[]");
+
+console.log("📂 Data dir:", DATA_DIR);
+
 app.listen(PORT, () => {
   console.log(`✅ Server started on http://localhost:${PORT}`);
 });
