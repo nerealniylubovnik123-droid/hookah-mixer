@@ -2,11 +2,11 @@
   "name": "hookah-mixer-app",
   "version": "1.0.0",
   "description": "Telegram Mini App для гостей кальянной — создание и сохранение миксов.",
-  "main": "server.js",
+  "main": "server.cjs",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.cjs",
+    "dev": "nodemon server.cjs"
   },
   "dependencies": {
     "express": "^4.19.2"
