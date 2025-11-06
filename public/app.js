@@ -277,41 +277,28 @@ function App() {
           </div>
 
           <div className="card">
-  <div className="hd"><h3>Бренды</h3></div>
-
-  {/* было: <div className="bd"> ... */}
-  <div className="bd builder-brands">
-    {brands.filter(b => !b.hidden).map(b => (
-      // добавляем brand-card и active, когда открыт
-      <div key={b.id} className={"mix-card brand-card" + (collapsed[b.id] ? "" : " active")}>
-        {/* шапке бренда добавим класс brand-head для красивого вида */}
-        <div
-          className="row between brand-head"
-          onClick={() => setCollapsed(c => ({ ...c, [b.id]: !c[b.id] }))}
-          style={{ cursor: "pointer" }}
-        >
-          <b>{b.name}</b>
-          <span className="tiny">{collapsed[b.id] ? "▼" : "▲"}</span>
-        </div>
-
-        {!collapsed[b.id] && (
-          // просто добавим класс для анимации появления
-          <div className="flavor-list fancy-open">
-            {b.flavors.filter(f => !f.hidden).map(f => (
-              <div key={f.id} className="flavor-item">
-                <div>
-                  <b>{f.name}</b>
-                  <div className="tiny muted">{f.type} — {f.taste}</div>
+            <div className="hd"><h3>Бренды</h3></div>
+            <div className="bd">
+              {brands.filter(b => !b.hidden).map(b => (
+                <div key={b.id} className="mix-card">
+                  <div className="row between" onClick={() => setCollapsed(c => ({ ...c, [b.id]: !c[b.id] }))} style={{ cursor: "pointer" }}>
+                    <b>{b.name}</b>
+                    <span className="tiny">{collapsed[b.id] ? "▼" : "▲"}</span>
+                  </div>
+                  {!collapsed[b.id] && (
+                    <div className="flavor-list">
+                      {b.flavors.filter(f => !f.hidden).map(f => (
+                        <div key={f.id} className="flavor-item">
+                          <div><b>{f.name}</b> <div className="tiny muted">{f.type} — {f.taste}</div></div>
+                          <button className="btn" onClick={() => addFlavor(b.id, f)}>+ в микс</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <button className="btn" onClick={() => addFlavor(b.id, f)}>+ в микс</button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        )}
-      </div>
-    ))}
-  </div>
-</div>
 
           <div className="card">
             <div className="hd"><h3>Ваш микс</h3></div>
