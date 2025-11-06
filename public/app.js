@@ -17,6 +17,19 @@ const IS_ADMIN = ADMIN_USERNAMES.includes(CURRENT_USERNAME) || ADMIN_IDS.include
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
+const TASTE_COLORS = {
+  "сладкий": "#f5a623",
+  "кислый": "#f56d6d",
+  "свежий": "#4fc3f7",
+  "десертный": "#d18df0",
+  "пряный": "#ff8c00",
+  "чайный": "#c1b684",
+  "алкогольный": "#a970ff",
+  "гастрономический": "#90a955",
+  "травяной": "#6ab04c"
+};
+const tasteColor = t => TASTE_COLORS[(t || "").toLowerCase()] || "#ccc";
+
 function App() {
   const [tab, setTab] = useState("community");
   const [brands, setBrands] = useState([]);
@@ -59,7 +72,7 @@ function App() {
     else alert("⚠️ Ошибка удаления");
   };
 
-  // === конструктор ===
+  // === BUILDER ===
   const [parts, setParts] = useState([]);
   const [search, setSearch] = useState("");
   const total = parts.reduce((a, b) => a + b.percent, 0);
@@ -173,6 +186,14 @@ function App() {
     saveLibrary(newLib);
   };
 
+  // === COMMUNITY (Миксы) ===
+  const tasteCategories = Array.from(new Set(mixes.map(m => (m.finalTaste || "").toLowerCase()).filter(Boolean)));
+  const [pref, setPref] = useState("all");
+  const [strength, setStrength] = useState(5);
+  const filteredMixes = mixes
+    .filter(m => pref === "all" || (m.finalTaste || "").toLowerCase().includes(pref))
+    .filter(m => Math.abs((m.avgStrength || 0) - strength) <= 1);
+
   return (
     <div className="container">
       <header className="title">Кальянный Миксер</header>
@@ -182,13 +203,53 @@ function App() {
         {IS_ADMIN && <button className={"tab-btn" + (tab === 'admin' ? ' active' : '')} onClick={() => setTab('admin')}>Админ</button>}
       </div>
 
+      {/* === COMMUNITY === */}
+      {tab === 'community' && (
+        <div className="card">
+          <div className="hd"><h3>Рекомендации</h3><p className="desc">Выберите настроение и крепость</p></div>
+          <div className="bd">
+            <div className="grid-2">
+              <button className={"btn " + (pref === 'all' ? 'accent' : '')} onClick={() => setPref('all')}>Все</button>
+              {tasteCategories.map(t => (
+                <button key={t} className={"btn " + (pref === t ? 'accent' : '')} onClick={() => setPref(t)}>{t}</button>
+              ))}
+            </div>
+            <div className="sep"></div>
+            <div>Крепость: <b>{strength}</b></div>
+            <input type="range" min="1" max="10" value={strength} onChange={e => setStrength(+e.target.value)} />
+            <div className="sep"></div>
+            <div className="grid">
+              {filteredMixes.map(m => (
+                <div key={m.id} className="mix-card">
+                  <div className="row between">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{m.name}</div>
+                      <div className="tiny muted">от {m.author}</div>
+                    </div>
+                    <div className="row">
+                      <button className={"btn small " + (likes[m.id] ? 'accent' : '')} onClick={() => toggleLike(m.id)}>❤ {m.likes}</button>
+                      {IS_ADMIN && <button className="btn small danger" onClick={() => deleteMix(m.id)}>✕</button>}
+                    </div>
+                  </div>
+                  <div className="tiny">Крепость: <b>{m.avgStrength}</b></div>
+                  <div className="row" style={{ flexWrap: "wrap", gap: "6px", margin: "6px 0" }}>
+                    <span className="badge" style={{ background: tasteColor(m.finalTaste), color: "#000", border: "none" }}>{m.finalTaste}</span>
+                  </div>
+                  <div className="tiny muted">Состав: {m.flavors.map(p => `${p.name} ${p.percent}%`).join(' + ')}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* === BUILDER === */}
       {tab === "builder" && (
         <>
           <div className="card">
             <div className="hd"><h3>Поиск по всем вкусам</h3></div>
             <div className="bd">
-              <input className="input" placeholder="Введите вкус (например, малина)" value={search} onChange={e => setSearch(e.target.value)} />
+              <input className="input" placeholder="Введите вкус (малина, клубника...)" value={search} onChange={e => setSearch(e.target.value)} />
               {search && (
                 <div className="search-results">
                   {brands.flatMap(b =>
