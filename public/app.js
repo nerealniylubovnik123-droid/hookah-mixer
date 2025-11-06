@@ -246,66 +246,36 @@ function App() {
       {/* === BUILDER === */}
       {tab === "builder" && (
         <>
-          <div className="card bg-gradient-to-b from-gray-950 to-gray-900 text-gray-200 border border-gray-800 shadow-xl">
-  <div className="hd">
-    <h3 className="text-lg font-bold text-gray-100 drop-shadow-md">Бренды</h3>
-    <p className="desc text-gray-400">Нажмите, чтобы раскрыть вкусы</p>
-  </div>
+          <div className="card">
+            <div className="hd"><h3>Поиск по всем вкусам</h3></div>
+            <div className="bd">
+              <input className="input" placeholder="Введите вкус (малина, клубника...)" value={search} onChange={e => setSearch(e.target.value)} />
+              {search && (
+                <div className="search-results">
+                  {brands.flatMap(b =>
+                    b.hidden ? [] :
+                      b.flavors
+                        .filter(f => !f.hidden)
+                        .filter(f => {
+                          const q = search.toLowerCase();
+                          return (
+                            (f.name || "").toLowerCase().includes(q) ||
+                            (f.type || "").toLowerCase().includes(q) ||
+                            (f.taste || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map(f => (
+                          <div key={`${b.id}-${f.id}`} className="flavor-item">
+                            <div><b>{b.name}</b> — {f.name} <div className="tiny muted">{f.type} — {f.taste}</div></div>
+                            <button className="btn" onClick={() => addFlavor(b.id, f)}>+ в микс</button>
+                          </div>
+                        ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
-  <div className="bd flex flex-wrap justify-between gap-3">
-    {brands.filter(b => !b.hidden).map(b => (
-      <div key={b.id} className="w-[48%]">
-        <motion.div
-          layout="position"
-          className={`bg-gradient-to-br from-gray-800 to-gray-700 transition-all rounded-2xl p-4 text-center font-semibold cursor-pointer shadow-md border hover:shadow-lg hover:-translate-y-0.5 ${
-            selected === b.id ? "border-emerald-400 shadow-emerald-400/20" : "border-gray-700"
-          }`}
-          onClick={() => setSelected(selected === b.id ? null : b.id)}
-          whileTap={{ scale: 0.97 }}
-        >
-          {b.name}
-        </motion.div>
-
-        <AnimatePresence initial={false}>
-          {selected === b.id && (
-            <motion.div
-              key="flavors"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="overflow-hidden mt-2"
-            >
-              <div className="flex flex-col gap-2 bg-gray-900/80 rounded-xl p-3 border border-gray-700/60 shadow-inner">
-                {b.flavors.filter(f => !f.hidden).map(f => (
-                  <motion.div
-                    key={f.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex justify-between items-center bg-gray-800/80 rounded-xl px-3 py-2 border border-gray-700/40 hover:border-emerald-400/40 hover:bg-gray-700 transition"
-                  >
-                    <div>
-                      <div className="font-medium text-gray-100">{f.name}</div>
-                      <div className="text-sm text-gray-400">{f.type} — {f.taste}</div>
-                    </div>
-                    <button
-                      className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-sm shadow-sm hover:bg-emerald-600 active:scale-95 transition"
-                      onClick={() => addFlavor(b.id, f)}
-                    >
-                      + в микс
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    ))}
-  </div>
-</div>
           <div className="card">
             <div className="hd"><h3>Бренды</h3></div>
             <div className="bd">
