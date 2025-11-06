@@ -176,67 +176,148 @@ function App() {
       )}
 
       {/* --- Вкладка Конструктор --- */}
-      {tab === 'builder' && (
-        <>
-          <div className="card">
-            <div className="hd"><h3>Конструктор миксов</h3></div>
-            <div className="bd">
-              <input className="input" placeholder="Поиск по всем вкусам..." value={search} onChange={e => setSearch(e.target.value)} />
-              <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {filteredBrands.map(b => (
-                  <div key={b.id} className="brand-card" style={{
-                    border: "1px solid #444",
-                    borderRadius: "12px",
-                    padding: "10px",
-                    background: "#1b1b1b",
-                    transition: "all 0.3s"
-                  }}>
-                    <div className="row between" onClick={() => setExpanded(e => ({ ...e, [b.id]: !e[b.id] }))} style={{ cursor: "pointer" }}>
-                      <b>{b.name}</b>
-                      <span style={{
-                        transform: expanded[b.id] ? "rotate(90deg)" : "rotate(0deg)",
-                        transition: "transform 0.3s"
-                      }}>▶</span>
-                    </div>
-                    <div style={{
-                      maxHeight: expanded[b.id] ? "500px" : "0",
-                      overflow: "hidden",
-                      transition: "max-height 0.4s ease"
-                    }}>
-                      {b.flavors.map(f => (
-                        <div key={f.id} className="flavor-item" style={{ marginTop: "6px" }}>
-                          <div><b>{f.name}</b><div className="tiny muted">{f.taste}</div></div>
-                          <button className="btn small" onClick={() => addFlavor(b.id, f)}>+ в микс</button>
-                        </div>
-                      ))}
-                    </div>
+      {/* --- Вкладка Конструктор --- */}
+{tab === 'builder' && (
+  <>
+    <div className="card">
+      <div className="hd"><h3>Конструктор миксов</h3></div>
+      <div className="bd">
+        <input
+          className="input"
+          placeholder="Поиск по всем вкусам..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        {/* Сетка брендов */}
+        <div
+          className="brand-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "10px",
+            marginTop: "10px"
+          }}
+        >
+          {brands.filter(b => !b.hidden).map(b => (
+            <div
+              key={b.id}
+              onClick={() => setSelected(selected === b.id ? null : b.id)}
+              className={`brand-card ${selected === b.id ? "active" : ""}`}
+              style={{
+                border: selected === b.id ? "2px solid #f5a623" : "1px solid #333",
+                borderRadius: "12px",
+                padding: "10px",
+                background: selected === b.id ? "#242424" : "#1b1b1b",
+                transition: "all 0.3s ease",
+                cursor: "pointer",
+                textAlign: "center"
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>{b.name}</div>
+              <div className="tiny muted">{b.flavors.length} вкусов</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Вкусы выбранного бренда */}
+        {selected && (
+          <div
+            className="flavor-list"
+            style={{
+              marginTop: "20px",
+              borderTop: "1px solid #333",
+              paddingTop: "15px",
+              animation: "fadeIn 0.4s ease"
+            }}
+          >
+            <h4 style={{ marginBottom: "10px", textAlign: "center" }}>
+              Вкусы {brands.find(b => b.id === selected)?.name}
+            </h4>
+
+            <div
+              className="flavor-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px"
+              }}
+            >
+              {brands
+                .find(b => b.id === selected)
+                ?.flavors.filter(f => {
+                  const q = search.toLowerCase();
+                  return (
+                    !f.hidden &&
+                    ((f.name || "").toLowerCase().includes(q) ||
+                      (f.type || "").toLowerCase().includes(q) ||
+                      (f.taste || "").toLowerCase().includes(q))
+                  );
+                })
+                .map(f => (
+                  <div
+                    key={f.id}
+                    className="flavor-item"
+                    style={{
+                      background: "#222",
+                      border: "1px solid #333",
+                      borderRadius: "10px",
+                      padding: "10px",
+                      textAlign: "center"
+                    }}
+                  >
+                    <div><b>{f.name}</b></div>
+                    <div className="tiny muted">{f.type}</div>
+                    <div className="tiny">{f.taste}</div>
+                    <button
+                      className="btn small"
+                      style={{ marginTop: "6px" }}
+                      onClick={() => addFlavor(selected, f)}
+                    >
+                      + в микс
+                    </button>
                   </div>
                 ))}
-              </div>
             </div>
           </div>
+        )}
+      </div>
+    </div>
 
-          <div className="card">
-            <div className="hd"><h3>Ваш микс</h3></div>
-            <div className="bd">
-              {parts.map(p => (
-                <div key={p.key} className="mix-card">
-                  <div className="row between">
-                    <div><b>{p.name}</b><div className="tiny muted">{p.taste}</div></div>
-                    <button className="btn small" onClick={() => removePart(p.key)}>×</button>
-                  </div>
-                  <input type="range" min="0" max="100" step="5" value={p.percent} onChange={e => updatePct(p.key, +e.target.value)} />
-                  <div className="tiny muted">{p.percent}%</div>
-                </div>
-              ))}
-              <div className="tiny muted">
-                Итого: {total}% (осталось {100 - total}%) • Крепость {avg} • Вкус: {finalTaste}
-              </div>
-              <button className={"btn " + (total === 100 ? 'accent' : '')} onClick={saveMix} disabled={total !== 100}>Сохранить</button>
+    <div className="card">
+      <div className="hd"><h3>Ваш микс</h3></div>
+      <div className="bd">
+        {parts.map(p => (
+          <div key={p.key} className="mix-card">
+            <div className="row between">
+              <div><b>{p.name}</b><div className="tiny muted">{p.taste}</div></div>
+              <button className="btn small" onClick={() => removePart(p.key)}>×</button>
             </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={p.percent}
+              onChange={e => updatePct(p.key, +e.target.value)}
+            />
+            <div className="tiny muted">{p.percent}%</div>
           </div>
-        </>
-      )}
+        ))}
+        <div className="tiny muted">
+          Итого: {total}% (осталось {100 - total}%) • Крепость {avg} • Вкус: {finalTaste}
+        </div>
+        <button
+          className={"btn " + (total === 100 ? "accent" : "")}
+          onClick={saveMix}
+          disabled={total !== 100}
+        >
+          Сохранить
+        </button>
+      </div>
+    </div>
+  </>
+)}
       {/* --- Вкладка Админ --- */}
       {IS_ADMIN && tab === 'admin' && (
         <div className="admin-panel">
