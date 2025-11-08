@@ -1,352 +1,233 @@
+/* === Базовые переменные === */
 :root {
-  --bg:#000;
-  --panel:#0c0c0c;
-  --panel-2:#151515;
-  --border:#242424;
-  --text:#fff;
-  --muted:#f0e9db;
-  --accent:#f0b85a;
+  --bg: #0b0b0b;
+  --panel: rgba(32, 32, 32, 0.85);
+  --accent: #f0b85a;
+  --text: #f5f5f5;
+  --muted: #9b9b9b;
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow: 0 0 20px rgba(240, 184, 90, 0.2);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
 html, body {
-  width: 100vw;
-  height: 100vh;
+  margin: 0;
+  padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, system-ui, Segoe UI, Roboto, sans-serif;
-  overflow: hidden;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* === Анимированный дым === */
+.smoke-layer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 0%, transparent 70%);
+  animation: smoke 40s linear infinite;
+  z-index: 0;
+  opacity: 0.3;
+}
+.smoke-layer.second {
+  animation-delay: 10s;
+  opacity: 0.25;
+}
+@keyframes smoke {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-10%, -10%) scale(1.2); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+.pulse-smoke {
+  animation: smokePulse 2s ease-out;
+}
+@keyframes smokePulse {
+  0% { opacity: 0.4; transform: scale(1); }
+  100% { opacity: 0.2; transform: scale(1.1); }
 }
 
 /* === Вступительный экран === */
 #welcome {
   position: fixed;
-  inset: 0;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #0b0b0b 40%, #000 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: url('smoke.gif') center/cover no-repeat;
-  background-color: #000;
-  z-index: 10;
   text-align: center;
-  transition: opacity 1s ease;
+  color: var(--text);
+  z-index: 100;
+  transition: opacity 0.8s ease;
 }
-
 #welcome.hidden {
   opacity: 0;
-  pointer-events: none;
 }
-
 #welcome h1 {
-  color: var(--accent);
-  font-size: 28px;
+  font-size: 1.6em;
   margin-bottom: 20px;
-  text-shadow:
-  2px 2px 6px rgba(0,0,0,0.7),
-  0 0 12px rgba(240,184,90,0.7),
-  0 0 24px rgba(240,184,90,0.3) !important;
-  animation: glow 3.2s ease-in-out infinite;
-  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(240,184,90,0.3);
 }
-
-@keyframes glow {
-  0%,100% { text-shadow: 0 0 10px rgba(240,184,90,.45),0 0 18px rgba(240,184,90,.2); opacity:.96; }
-  50% { text-shadow:0 0 18px rgba(240,184,90,.85),0 0 30px rgba(240,184,90,.35); opacity:1; }
+#welcome .logo-main {
+  width: 160px;
+  margin-bottom: 25px;
+  filter: drop-shadow(0 0 15px rgba(240,184,90,0.3));
 }
-
-#welcome img.logo-main {
-  width:200px;
-  margin-bottom:20px;
-  animation:float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%,100% { transform:translateY(0); }
-  50% { transform:translateY(-8px); }
-}
-
 #welcome .enter-btn {
-  width:118px;
-  height:118px;
-  border-radius:50%;
-  background:radial-gradient(circle at 50% 50%,#f0b85a 0%,#d79e45 60%,#000 100%);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  box-shadow:0 0 25px rgba(240,184,90,0.5);
-  cursor:pointer;
-  transition:transform .25s ease,box-shadow .25s ease;
-  animation:pulse 2.6s ease-in-out infinite;
+  animation: pulse 2.5s infinite ease-in-out;
+  cursor: pointer;
 }
-
-#welcome .enter-btn:hover {
-  transform:scale(1.08);
-  box-shadow:0 0 35px rgba(240,184,90,0.8);
-}
-
 @keyframes pulse {
-  0%,100% { box-shadow:0 0 20px rgba(240,184,90,.45); transform:scale(1); }
-  50% { box-shadow:0 0 36px rgba(240,184,90,.85); transform:scale(1.04); }
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
 }
 
-/* === Основное приложение === */
+/* === Основной контейнер === */
 #root {
+  position: relative;
   opacity: 0;
-  transition: opacity 1s ease;
-  overflow-y: auto;
-  height: 100vh;
+  transition: opacity 0.8s ease;
+  z-index: 1;
+  padding: 1.2rem;
 }
 
-.container {
-  max-width: 420px;
-  margin: 0 auto;
-  padding: 16px;
-  display: grid;
-  gap: 16px;
-}
-
-header.title {
-  text-align: center;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--muted);
-}
-
+/* === Вкладки === */
 .tabs {
   display: flex;
-  gap: 8px;
-  background: var(--panel-2);
-  padding: 6px;
-  border-radius: 14px;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
 }
-
-.tab-btn {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #fff;
-  padding: 10px 12px;
-  border-radius: 10px;
+.tabs button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: .15s transform, .2s background, .2s color;
+  transition: all 0.25s ease;
+  box-shadow: inset 0 0 0 transparent;
 }
-
-.tab-btn.active {
+.tabs button:hover {
+  color: var(--accent);
+  box-shadow: 0 0 10px rgba(240,184,90,0.2);
+}
+.tabs button.active {
   background: var(--accent);
   color: #000;
+  box-shadow: 0 0 20px rgba(240,184,90,0.4);
 }
 
-.card {
+/* === Карточки брендов === */
+.brand-card {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 16px;
-}
-
-.card .hd {
-  padding: 14px 14px 0 14px;
-}
-
-.card .hd h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.card .hd .desc {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: rgba(240,233,219,.7);
-}
-
-.card .bd {
-  padding: 12px 14px 14px 14px;
-}
-
-.btn {
-  background: #1f1f1f;
-  border: 1px solid #2a2a2a;
-  color: #fff;
-  border-radius: 10px;
-  padding: 8px 10px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
   cursor: pointer;
-  transition: .15s transform, .2s background, .2s color;
 }
-
-.btn:hover { transform: translateY(-1px); }
-.btn:active { transform: translateY(0) scale(.98); }
-
-.btn.accent {
-  background: var(--accent);
-  color: #000;
-  border-color: var(--accent);
+.brand-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 25px rgba(240,184,90,0.25);
 }
-
-.btn.small {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 8px;
+.brand-card h3 {
+  color: var(--accent);
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem 0;
 }
-
-.btn.ghost {
-  background: transparent;
-  border-color: #2a2a2a;
-}
-
-.btn.danger {
-  background: #3a0d0d;
-  border-color: #5a1a1a;
-  color: #ffbaba;
-}
-
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.grid { display: grid; gap: 8px; }
-
-.input {
-  width: 100%;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  color: #fff;
-  border-radius: 10px;
-  padding: 10px;
-}
-
-.mix-card {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
-}
-
-.tiny { font-size: 11px; }
-.muted { opacity: .75; }
-.sep { height: 1px; background: var(--border); margin: 8px 0; }
-
-.row { display: flex; gap: 8px; align-items: center; }
-.row.between { justify-content: space-between; }
-
-.brand-btn {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  text-align: center;
-  color: var(--text);
-  cursor: pointer;
-  transition: .15s transform;
-}
-
-.brand-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #000;
-}
-
 .flavor-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--panel-2);
+  background: rgba(0,0,0,0.25);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 10px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.4rem;
+  transition: background 0.2s;
 }
-
-input[type=range] {
-  width: 100%;
-  accent-color: var(--accent);
+.flavor-item:hover {
+  background: rgba(240,184,90,0.1);
 }
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  font-size: 11px;
-}
-
-.badge.hidden {
-  border-color: #503333;
-  background: #2a1a1a;
-  color: #ffbaba;
-}
-
-.badge.ok {
-  border-color: #2c4737;
-  background: #16271d;
-  color: #bff5d6;
-}
-
-/* === Подсветка кнопок === */
-.tab-btn:hover,
-.btn:hover {
-  box-shadow: 0 0 12px rgba(240,184,90,0.45);
- }
-  /* === Фикс растягивания страницы в админке === */
-.admin-panel .grid-2 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-start;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.admin-panel .mix-card {
-  flex: 1 1 300px;
-  min-width: 280px;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.admin-panel {
-  overflow-x: hidden;
-}
-
-.container {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-/* === Сетка брендов в конструкторе === */
-.builder-brands {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px 0;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.brand-card {
-  flex: 1 1 calc(50% - 12px);
-  min-width: 140px;
-  max-width: 180px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 12px;
-  text-align: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.brand-card.active {
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
-}
-
-.brand-card:hover {
-  transform: scale(1.03);
-}
-
-.brand-card h4 {
-  margin: 0;
-  font-size: 14px;
+.flavor-item button {
+  background: var(--accent);
+  color: #000;
   font-weight: 600;
-  color: #fff;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.flavor-item button:hover {
+  background: #ffd276;
+}
+
+/* === Миксы === */
+.mix-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+.mix-card h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.mix-card .meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* === Панели и кнопки === */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+button, .btn {
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+button:hover, .btn:hover {
+  background: #ffd276;
+  transform: translateY(-1px);
+}
+button.secondary {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+button.secondary:hover {
+  color: var(--accent);
+  background: rgba(240,184,90,0.05);
+}
+
+/* === Адаптив === */
+@media (max-width: 600px) {
+  .tabs {
+    flex-wrap: wrap;
+  }
+  .brand-card {
+    padding: 0.8rem;
+  }
 }
