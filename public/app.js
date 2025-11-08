@@ -28,7 +28,7 @@ function App() {
     }
   }, []);
 
-  // === Загрузка данных ===
+  // === Загрузка данных из API ===
   useEffect(() => {
     Promise.all([
       fetch("/api/library").then(r => r.json()),
@@ -128,7 +128,7 @@ function App() {
         <div className="mix-list">
           {mixes.map(m => (
             <div key={m.id} className="mix-card">
-              <div>
+              <div className="mix-info">
                 <h4><IconFlame /> {m.name}</h4>
                 <div className="meta">
                   Автор: {m.author || "Аноним"} • Крепость: {m.strength}
@@ -157,7 +157,7 @@ function App() {
     </div>
   );
 
-  // === КОНСТРУКТОР ===
+  // === ДОБАВЛЕНИЕ / УДАЛЕНИЕ ВКУСОВ ===
   const addFlavor = (brand, flavor) => {
     if (mixParts.some(x => x.id === flavor.id)) return;
     setMixParts([...mixParts, { ...flavor, brand: brand.name }]);
@@ -167,6 +167,7 @@ function App() {
     setMixParts(mixParts.filter(x => x.id !== id));
   };
 
+  // === ВКЛАДКА "КОНСТРУКТОР" ===
   const renderBuilder = () => (
     <div className="builder">
       {/* === Ползунок крепости === */}
@@ -184,7 +185,7 @@ function App() {
         />
       </div>
 
-      {/* === Бренды и вкусы === */}
+      {/* === Бренды === */}
       <div className="brand-grid">
         {brands.map(b => (
           <div
@@ -201,6 +202,7 @@ function App() {
               <span className="arrow">{collapsed[b.id] ? "▼" : "▲"}</span>
             </div>
 
+            {/* === Список вкусов === */}
             <div
               className="flavors"
               style={{
@@ -264,8 +266,7 @@ function App() {
       <div className="panel">
         <h2 className="tab-title"><IconShield /> Управление библиотекой</h2>
         <p className="muted">
-          Здесь вы можете экспортировать или импортировать библиотеку и миксы,
-          а также управлять брендами и вкусами.
+          Здесь вы можете экспортировать или импортировать библиотеку и миксы, а также управлять брендами и вкусами.
         </p>
 
         <div className="grid-2 gap">
@@ -283,7 +284,7 @@ function App() {
           </button>
         </div>
 
-        {/* === Скрытые инпуты для импорта === */}
+        {/* === Скрытые поля для импорта === */}
         <input
           id="importLibrary"
           type="file"
@@ -349,7 +350,7 @@ function App() {
     </div>
   );
 
-  // === ГЛАВНЫЙ РЕНДЕР ===
+  // === РЕНДЕР ВСЕГО ПРИЛОЖЕНИЯ ===
   const tabs = [
     { id: "community", label: "Миксы", icon: <IconStar /> },
     { id: "builder", label: "Конструктор", icon: <IconDroplet /> },
@@ -358,7 +359,7 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      {/* === Вкладки === */}
+      {/* === Навигация по вкладкам === */}
       <div className="tabs">
         {tabs.map(t => (
           <button
@@ -371,7 +372,7 @@ function App() {
         ))}
       </div>
 
-      {/* === Контент === */}
+      {/* === Контент вкладок === */}
       <div className="content">
         {tab === "community" && renderCommunity()}
         {tab === "builder" && renderBuilder()}
@@ -381,5 +382,5 @@ function App() {
   );
 }
 
-// === РЕНДЕР ===
+// === РЕНДЕР ПРИЛОЖЕНИЯ ===
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
