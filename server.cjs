@@ -55,73 +55,109 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Получение библиотеки вкусов
 app.get("/api/library", (req, res) => {
-  res.json(readJSON(libraryFile));
+  try {
+    res.json(readJSON(libraryFile));
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // Обновление библиотеки (только админ)
 app.post("/api/library", (req, res) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: "not authorized" });
-  writeJSON(libraryFile, req.body || []);
-  res.json({ success: true });
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: "not authorized" });
+    writeJSON(libraryFile, req.body || []);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // Получение миксов
 app.get("/api/mixes", (req, res) => {
-  res.json(readJSON(mixesFile));
+  try {
+    res.json(readJSON(mixesFile));
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // Добавление микса
 app.post("/api/mixes", (req, res) => {
-  const data = readJSON(mixesFile);
-  const newMix = req.body;
-  if (!newMix || !newMix.name)
-    return res.status(400).json({ success: false, message: "Invalid mix" });
+  try {
+    const data = readJSON(mixesFile);
+    const newMix = req.body;
+    if (!newMix || !newMix.name)
+      return res.status(400).json({ success: false, message: "Invalid mix" });
 
-  newMix.id = Date.now().toString();
-  newMix.likes = 0;
-  data.push(newMix);
-  writeJSON(mixesFile, data);
-  res.json({ success: true });
+    newMix.id = Date.now().toString();
+    newMix.likes = 0;
+    data.push(newMix);
+    writeJSON(mixesFile, data);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // Лайк / дизлайк микса
 app.post("/api/mixes/:id/like", (req, res) => {
-  const data = readJSON(mixesFile);
-  const mix = data.find(m => m.id === req.params.id);
-  if (!mix) return res.status(404).json({ success: false });
-  mix.likes = Math.max(0, (mix.likes || 0) + (req.body.delta || 0));
-  writeJSON(mixesFile, data);
-  res.json({ success: true, mix });
+  try {
+    const data = readJSON(mixesFile);
+    const mix = data.find(m => m.id === req.params.id);
+    if (!mix) return res.status(404).json({ success: false });
+    mix.likes = Math.max(0, (mix.likes || 0) + (req.body.delta || 0));
+    writeJSON(mixesFile, data);
+    res.json({ success: true, mix });
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // Удаление микса (только админ)
 app.delete("/api/mixes/:id", (req, res) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: "not authorized" });
-  const data = readJSON(mixesFile);
-  const updated = data.filter(m => String(m.id) !== String(req.params.id));
-  if (updated.length === data.length)
-    return res.status(404).json({ success: false, message: "Mix not found" });
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: "not authorized" });
+    const data = readJSON(mixesFile);
+    const updated = data.filter(m => String(m.id) !== String(req.params.id));
+    if (updated.length === data.length)
+      return res.status(404).json({ success: false, message: "Mix not found" });
 
-  writeJSON(mixesFile, updated);
-  res.json({ success: true });
+    writeJSON(mixesFile, updated);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // === Бэкапы ===
 app.get("/api/download/library", (req, res) => {
-  res.setHeader("Content-Disposition", "attachment; filename=library_backup.json");
-  res.setHeader("Content-Type", "application/json");
-  res.send(readJSON(libraryFile));
+  try {
+    res.setHeader("Content-Disposition", "attachment; filename=library_backup.json");
+    res.setHeader("Content-Type", "application/json");
+    res.send(readJSON(libraryFile));
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 app.get("/api/download/mixes", (req, res) => {
-  res.setHeader("Content-Disposition", "attachment; filename=mixes_backup.json");
-  res.setHeader("Content-Type", "application/json");
-  res.send(readJSON(mixesFile));
+  try {
+    res.setHeader("Content-Disposition", "attachment; filename=mixes_backup.json");
+    res.setHeader("Content-Type", "application/json");
+    res.send(readJSON(mixesFile));
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // === Фронтенд ===
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  try {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+  } catch (e) {
+    res.status(500).json({ error: "server error" });
+  }
 });
 
 // === Запуск ===

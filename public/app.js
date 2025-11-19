@@ -30,6 +30,14 @@ const TASTE_COLORS = {
 };
 const tasteColor = t => TASTE_COLORS[(t || "").toLowerCase()] || "#ccc";
 
+function debounce(func, delay) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+}
+
 function App() {
   const [tab, setTab] = useState("community");
   const [brands, setBrands] = useState([]);
@@ -37,6 +45,8 @@ function App() {
   const [likes, setLikes] = useState({});
   const [banned, setBanned] = useState([]);
   const [collapsed, setCollapsed] = useState({}); // визуал: будем заполнять при загрузке
+  const [page, setPage] = useState(0);
+  const perPage = 10;
 
   useEffect(() => {
     fetch("/api/library").then(r => r.json()).then(data => {
@@ -197,9 +207,11 @@ function App() {
   const tasteCategories = Array.from(new Set(mixes.map(m => (m.finalTaste || "").toLowerCase()).filter(Boolean)));
   const [pref, setPref] = useState("all");
   const [strengthFilter, setStrengthFilter] = useState(5); // переименовал локально, чтобы не путать со слайдером билдера
-  const filteredMixes = mixes
+  const filtered = mixes
     .filter(m => pref === "all" || (m.finalTaste || "").toLowerCase().includes(pref))
-    .filter(m => Math.abs((m.avgStrength || 0) - strengthFilter) <= 1);
+    .filter(m => Math.abs((m.avgStrength || 0) - strengthFilter) <= 1)
+    .sort((a, b) => (b.likes || 0) - (a.likes || 0));
+  const visibleMixes = filtered.slice(page * perPage, (page + 1) * perPage);
 
   return (
     <div className="container app-theme">
@@ -239,7 +251,7 @@ function App() {
             </div>
             <div className="sep"></div>
             <div className="grid">
-              {filteredMixes.map(m => (
+              {visibleMixes.map(m => (
                 <div key={m.id} className="mix-card card-soft">
                   <div className="row between">
                     <div>
@@ -259,6 +271,11 @@ function App() {
                 </div>
               ))}
             </div>
+            <div className="pagination">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>Предыдущая</button>
+              <span>Страница {page + 1}</span>
+              <button disabled={(page + 1) * perPage >= filtered.length} onClick={() => setPage(p => p + 1)}>Следующая</button>
+            </div>
           </div>
         </div>
       )}
@@ -269,7 +286,7 @@ function App() {
           <div className="card glow">
             <div className="hd"><h3 className="h3 with-ico-drop">Поиск по всем вкусам</h3></div>
             <div className="bd">
-              <input className="input" placeholder="Введите вкус (малина, клубника...)" value={search} onChange={e => setSearch(e.target.value)} />
+              <input className="input" placeholder="Введите вкус (малина, клубника...)" value={search} onChange={debounce(e => setSearch(e.target.value), 300)} />
               {search && (
                 <div className="search-results">
                   {brands.flatMap(b =>
@@ -518,6 +535,9 @@ function App() {
           </div>
         </div>
       )}
+      <div className="footer muted" style={{ textAlign: 'center', padding: '10px 0', fontSize: '12px', color: '#cfc7b3' }}>
+        Разработано с 🔥 для вашего TG-канала. Нужен свой мини-app? Пиши <a href="https://t.me/Tutenhaman" style={{ color: '#f0b85a', textDecoration: 'none' }}>@Tutenhaman</a>
+      </div>
     </div>
   );
 }
