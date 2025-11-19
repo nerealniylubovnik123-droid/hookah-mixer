@@ -45,8 +45,6 @@ function App() {
   const [likes, setLikes] = useState({});
   const [banned, setBanned] = useState([]);
   const [collapsed, setCollapsed] = useState({}); // визуал: будем заполнять при загрузке
-  const [page, setPage] = useState(0);
-  const perPage = 10;
 
   useEffect(() => {
     fetch("/api/library").then(r => r.json()).then(data => {
@@ -211,7 +209,6 @@ function App() {
     .filter(m => pref === "all" || (m.finalTaste || "").toLowerCase().includes(pref))
     .filter(m => Math.abs((m.avgStrength || 0) - strengthFilter) <= 1)
     .sort((a, b) => (b.likes || 0) - (a.likes || 0));
-  const visibleMixes = filtered.slice(page * perPage, (page + 1) * perPage);
 
   return (
     <div className="container app-theme">
@@ -251,7 +248,7 @@ function App() {
             </div>
             <div className="sep"></div>
             <div className="grid">
-              {visibleMixes.map(m => (
+              {filtered.map(m => (
                 <div key={m.id} className="mix-card card-soft">
                   <div className="row between">
                     <div>
@@ -270,11 +267,6 @@ function App() {
                   <div className="tiny muted">Состав: {m.flavors.map(p => `${p.name} ${p.percent}%`).join(' + ')}</div>
                 </div>
               ))}
-            </div>
-            <div className="pagination">
-              <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>Предыдущая</button>
-              <span>Страница {page + 1}</span>
-              <button disabled={(page + 1) * perPage >= filtered.length} onClick={() => setPage(p => p + 1)}>Следующая</button>
             </div>
           </div>
         </div>
