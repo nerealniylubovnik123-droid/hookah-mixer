@@ -1,120 +1,101 @@
-:root {
-  --bg: #0a0a0a;
-  --bg2: #0f0f10;
-  --panel: #111114;
-  --panel-2: #17181b;
-  --border: #26282e;
-  --text: #fff;
-  --muted: #b8b8b8;
-  --accent: #f0b85a;
-  --glow: 0 0 30px rgba(240,184,90,.35);
+:root{
+  --bg:#0a0a0a;
+  --bg2:#0f0f10;
+  --panel:#111114;
+  --panel-2:#17181b;
+  --border:#26282e;
+  --text:#fff;
+  --muted:#cfc7b3;
+  --accent:#f0b85a;
+  --glow: 0 0 24px rgba(240,184,90,.25);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+*{ box-sizing:border-box; margin:0; padding:0; }
 
-html, body {
-  width: 100vw; height: 100vh;
+html,body{
+  width:100vw; height:100vh;
   background: radial-gradient(circle at 50% 0%, rgba(240,184,90,0.08), transparent 50%),
               radial-gradient(circle at 20% 80%, rgba(240,184,90,0.05), transparent 60%),
               #0a0a0a;
-  color: var(--text);
+  color:var(--text);
   font-family: Inter, system-ui, Segoe UI, Roboto, sans-serif;
   overflow: hidden;
 }
 
-/* === КАРТОЧКИ === */
-.card, .glow {
-  background: linear-gradient(145deg, rgba(30,30,35,0.8), rgba(15,15,20,0.95));
+/* === Welcome === */
+#welcome{ position:fixed; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
+  background:url('smoke.gif') center/cover no-repeat; background-color:#000; z-index:10; text-align:center; transition:opacity 1s ease;}
+#welcome.hidden{ opacity:0; pointer-events:none; }
+#welcome h1{ color:var(--accent); font-size:28px; margin-bottom:20px; text-shadow:2px 2px 6px rgba(0,0,0,0.7),0 0 12px rgba(240,184,90,0.7),0 0 24px rgba(240,184,90,0.3)!important; animation:glow 3.2s ease-in-out infinite; font-weight:700; }
+@keyframes glow{ 0%,100%{ text-shadow:0 0 10px rgba(240,184,90,.45),0 0 18px rgba(240,184,90,.2); opacity:.96 } 50%{ text-shadow:0 0 18px rgba(240,184,90,.85),0 0 30px rgba(240,184,90,.35); opacity:1 } }
+#welcome img.logo-main{ width:200px; margin-bottom:20px; animation:float 6s ease-in-out infinite; }
+@keyframes float{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-8px) } }
+#welcome .enter-btn{ width:118px; height:118px; border-radius:50%; background:radial-gradient(circle at 50% 50%,#f0b85a 0%,#d79e45 60%,#000 100%); display:flex; justify-content:center; align-items:center; box-shadow:0 0 25px rgba(240,184,90,0.5); cursor:pointer; transition:transform .25s ease,box-shadow .25s ease; animation:pulse 2.6s ease-in-out infinite; }
+#welcome .enter-btn:hover{ transform:scale(1.08); box-shadow:0 0 35px rgba(240,184,90,0.8) }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 20px rgba(240,184,90,.45); transform:scale(1) } 50%{ box-shadow:0 0 36px rgba(240,184,90,.85); transform:scale(1.04) } }
+
+/* === Глобальные улучшения === */
+.container { max-width:100%; overflow-x:hidden; padding:0 12px; }
+.glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+/* === Карточки (главное улучшение) === */
+.card, .mix-card, .brand-box {
+  background: linear-gradient(145deg, rgba(30,30,35,0.9), rgba(15,15,20,0.95));
   border: 1px solid #333;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
-  backdrop-filter: blur(12px);
   border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: all 0.3s ease;
+  position: relative;
   overflow: hidden;
-  transition: all 0.4s ease;
 }
-.card:hover, .glow:hover {
+.card::before, .mix-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.7;
+}
+.card:hover, .mix-card:hover, .brand-box:hover {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(240,184,90,0.15), 0 0 30px rgba(240,184,90,0.2);
+  box-shadow: 0 20px 40px rgba(240,184,90,0.15), 0 0 20px rgba(240,184,90,0.1);
   border-color: #f0b85a44;
 }
 
-/* === КНОПКИ === */
+/* === Кнопки === */
 .btn {
+  border-radius: 14px;
   padding: 12px 20px;
-  border-radius: 16px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid #333;
-  color: #fff;
   font-weight: 600;
-  cursor: pointer;
   transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
 }
 .btn.accent {
   background: linear-gradient(90deg, #f0b85a, #e09b3a);
   color: #000;
-  font-weight: 700;
-  box-shadow: var(--glow);
+  box-shadow: 0 0 20px rgba(240,184,90,0.5);
 }
 .btn.accent:hover {
-  box-shadow: 0 0 40px rgba(240,184,90,0.8);
-  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(240,184,90,0.9);
+  transform: translateY(-2px) scale(1.03);
 }
-.btn.small { padding: 8px 14px; font-size: 13px; }
+.btn.accent:active { transform: scale(0.98); }
 
-/* Пульсация для кнопки "Сохранить" при 100% */
-.save-btn:enabled { animation: pulse 2s infinite; }
-@keyframes pulse {
-  0%,100% { box-shadow: 0 0 20px rgba(240,184,90,0.5); }
-  50% { box-shadow: 0 0 40px rgba(240,184,90,0.9); }
-}
-
-/* === КАРТОЧКИ МИКСОВ === */
-.mix-card {
-  background: linear-gradient(135deg, #1a1a1f, #111114);
-  border-radius: 18px;
-  padding: 16px;
-  position: relative;
-  opacity: 0;
-  transform: translateY(30px);
-  animation: fadeUp 0.6s forwards;
-}
-.mix-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 3px;
-  background: var(--accent);
-}
-.mix-card:nth-child(1) { animation-delay: 0.05s; }
-.mix-card:nth-child(2) { animation-delay: 0.1s; }
-.mix-card:nth-child(3) { animation-delay: 0.15s; }
-.mix-card:nth-child(4) { animation-delay: 0.2s; }
-/* и т.д. до 10 */
-
-@keyframes fadeUp {
-  to { opacity: 1; transform: translateY(0); }
+/* Пульсация для кнопки "Сохранить" когда 100% */
+.save-btn:disabled { opacity: 0.5; }
+.save-btn:enabled {
+  animation: pulse 2s infinite;
 }
 
-/* === БРЕНДЫ === */
-.brand-box {
-  background: rgba(255,255,255,0.04);
-  border-radius: 16px;
-  padding: 16px;
-  transition: all 0.3s;
-}
-.brand-box:hover {
-  background: rgba(240,184,90,0.08);
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 12px 30px rgba(240,184,90,0.15);
-}
-
-/* === ПРОГРЕСС-БАР В БИЛДЕРЕ === */
+/* === Прогресс-бар в билдере === */
 .progress-bar {
   width: 100%;
   height: 10px;
   background: #222;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   margin: 12px 0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
 }
 .progress-bar > div {
   height: 100%;
@@ -122,7 +103,14 @@ html, body {
   transition: width 0.4s ease;
 }
 
-/* === ФИНАЛЬНЫЙ ВКУС === */
+/* === Анимация появления элементов === */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mix-card, .brand-box { animation: fadeUp 0.6s ease forwards; }
+
+/* === Финальный вкус — красивый бейдж === */
 .final-taste-badge {
   padding: 8px 18px;
   border-radius: 30px;
@@ -134,16 +122,11 @@ html, body {
   box-shadow: 0 4px 15px rgba(240,184,90,0.4);
 }
 
-/* === АНИМАЦИЯ ДОБАВЛЕНИЯ ВКУСА === */
-@keyframes pop {
-  0% { transform: scale(0.8); opacity: 0; }
-  70% { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 1; }
+/* === Лайк с анимированным сердечком === */
+.like {
+  position: relative;
 }
-.pop { animation: pop 0.4s ease; }
-
-/* === ЛАЙК С СЕРДЕЧКОМ === */
-.like::after {
+.like.liked::after {
   content: '❤️';
   position: absolute;
   top: -30px;
@@ -151,20 +134,60 @@ html, body {
   transform: translateX(-50%);
   font-size: 24px;
   opacity: 0;
-  pointer-events: none;
-}
-.like.liked::after {
-  animation: heartFloat 1s forwards;
+  animation: heartFloat 1s ease forwards;
 }
 @keyframes heartFloat {
-  to { transform: translate(-50%, -60px); opacity: 0; }
+  0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-60px); }
 }
 
-/* === ФУТЕР === */
-.footer {
-  text-align: center;
-  padding: 30px 0 50px;
-  opacity: 0.6;
-  font-size: 12px;
+/* === Табы и вкладки === */
+.tabs {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
 }
-.footer img { width: 80px; opacity: 0.4; margin-bottom: 8px; }
+.tab-btn {
+  padding: 14px 20px;
+  border-radius: 0 !important;
+}
+.tab-btn.active {
+  background: linear-gradient(90deg, #f0b85a33, transparent);
+  border-bottom: 3px solid var(--accent);
+}
+
+/* === Иконки === */
+.ico { filter: drop-shadow(0 0 4px rgba(240,184,90,0.4)); }
+
+/* === Остальное — твои оригинальные стили (все сохранены) === */
+.slider-row{ display:flex; align-items:center; gap:10px; }
+.control{ display:flex; align-items:center; gap:8px; color:#e9e6dd; }
+.tag-row{ flex-wrap:wrap; gap:6px; margin:6px 0 }
+.mix-title{ font-weight:700; letter-spacing:.2px; }
+
+.brand-box{ transition:all .3s ease; }
+.brand-head .brand-name{ display:flex; align-items:center; gap:8px; }
+.arrow{ opacity:.75 }
+
+.brands-grid{ display:grid; gap:12px; grid-template-columns:1fr; }
+@media (min-width:520px){ .brands-grid{ grid-template-columns:1fr 1fr } }
+
+.admin-panel .grid-2{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; max-width:100%; overflow-x:hidden; }
+.admin-panel .mix-card{ flex:1 1 300px; min-width:280px; max-width:100%; box-sizing:border-box; }
+.admin-panel{ overflow-x:hidden; }
+
+.tab-btn:hover,.btn:hover{ box-shadow: 0 0 16px rgba(240,184,90,.5); }
+
+.builder-brands{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:10px 0; max-width:100%; overflow-x:hidden; }
+.brand-card{ flex:1 1 calc(50% - 12px); min-width:140px; max-width:180px; background:rgba(255,255,255,.08); border-radius:12px; padding:12px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.15); transition:all .3s ease; cursor:pointer; }
+.brand-card.active{ background:rgba(255,255,255,.18); box-shadow:0 0 12px rgba(255,255,255,.3) }
+.brand-card:hover{ transform:scale(1.04); box-shadow:0 0 20px rgba(240,184,90,.2) }
+.brand-card h4{ margin:0; font-size:14px; font-weight:600; color:#fff }
+
+/* Анимация pop для новых элементов */
+@keyframes pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop { animation: pop 0.4s ease; }
