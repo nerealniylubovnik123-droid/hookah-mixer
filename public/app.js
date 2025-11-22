@@ -37,7 +37,7 @@ function App() {
   const [likes, setLikes] = useState({});
   const [banned, setBanned] = useState([]);
   const [collapsed, setCollapsed] = useState({});
-  const [search, setSearch] = useState("");   // ←←← ПОИСК
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch("/api/library").then(r => r.json()).then(data => {
@@ -78,7 +78,8 @@ function App() {
     if (j.success) reloadMixes();
     else alert("⚠️ Ошибка удаления");
   };
-    // === BUILDER ===
+
+  // === BUILDER ===
   const [parts, setParts] = useState([]);
   const total = parts.reduce((a, b) => a + b.percent, 0);
   const avg = parts.length && total > 0 ? Math.round(parts.reduce((a, p) => a + p.percent * p.strength, 0) / total) : 0;
@@ -147,14 +148,13 @@ function App() {
     }
   };
 
-  // ФИЛЬТРАЦИЯ ПО ПОИСКУ
   const filteredBrands = brands.filter(brand => {
     const q = search.toLowerCase().trim();
     if (!q) return true;
-    return brand.name.toLowerCase().includes(q) || 
-           brand.flavors.some(f => f.name.toLowerCase().includes(q));
+    return brand.name.toLowerCase().includes(q) || brand.flavors.some(f => f.name.toLowerCase().includes(q));
   });
-    return (
+
+  return (
     <div className="container">
       <header className="title with-icon">Кальянный Миксер</header>
 
@@ -172,10 +172,8 @@ function App() {
         )}
       </div>
 
-      {/* === КОНСТРУКТОР === */}
       {tab === "builder" && (
         <>
-          {/* ПОИСК */}
           <div className="card glow" style={{marginBottom:"16px"}}>
             <input
               type="text"
@@ -251,7 +249,7 @@ function App() {
           </div>
         </>
       )}
-            {/* === СООБЩЕСТВО === */}
+
       {tab === "community" && (
         <div>
           {mixes.length === 0 && <p style={{textAlign:"center",padding:"40px",color:"#888"}}>Пока нет миксов :( Создай первый!</p>}
@@ -281,25 +279,14 @@ function App() {
         </div>
       )}
 
-      {/* === АДМИНКА (оставлена полностью как у тебя было) === */}
       {tab === "admin" && IS_ADMIN && (
         <div className="admin-panel">
-          <div className="card glow">
-            <div className="hd">
-              <h3 className="h3 with-ico-shield">Управление библиотекой</h3>
-            </div>
-            <div style={{ marginBottom: "16px" }}>
-              <input type="text" placeholder="Поиск по вкусу..." onChange={e => setSearch(e.target.value)}
-                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "rgba(255,255,255,0.1)", color: "white" }} />
-            </div>
-            {/* Здесь весь твой код управления брендами и вкусами — он у тебя был рабочий, я его не трогаю */}
-          </div>
-
           <div className="card glow">
             <div className="hd">
               <h3 className="h3 with-ico-star">📦 Резервное копирование</h3>
               <p className="desc">Сохраняйте и восстанавливайте данные миксов и вкусов</p>
             </div>
+
             <div className="bd grid-2">
               <button className="btn accent" onClick={async () => {
                 const res = await fetch("/api/library");
@@ -309,7 +296,7 @@ function App() {
                 a.href = URL.createObjectURL(blob);
                 a.download = "library_backup.json";
                 a.click();
-              }}>⬇️ Скачать библиотеку</button>
+              }}><span className="ico ico-flame"></span>⬇️ Скачать библиотеку</button>
 
               <button className="btn accent" onClick={async () => {
                 const res = await fetch("/api/mixes");
@@ -319,13 +306,62 @@ function App() {
                 a.href = URL.createObjectURL(blob);
                 a.download = "mixes_backup.json";
                 a.click();
-              }}>⬇️ Скачать миксы</button>
+              }}><span className="ico ico-star"></span>⬇️ Скачать миксы</button>
 
               <button className="btn" onClick={() => document.getElementById("uploadLibrary").click()}>⬆️ Загрузить библиотеку</button>
-              <input type="file" id="uploadLibrary" accept=".json" style={{display:"none"}} onChange={async e => { /* твой код загрузки */ }} />
+              <input
+                type="file"
+                id="uploadLibrary"
+                accept=".json"
+                style={{ display: "none" }}
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const text = await file.text();
+                  try {
+                    const data = JSON.parse(text);
+                    await fetch("/api/library", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "x-admin-id": CURRENT_USER_ID || ""
+                      },
+                      body: JSON.stringify(data)
+                    });
+                    alert("✅ Библиотека успешно восстановлена");
+                    fetch("/api/library").then(r => r.json()).then(setBrands);
+                  } catch {
+                    alert("⚠️ Ошибка при загрузке файла");
+                  }
+                }}
+              />
 
               <button className="btn" onClick={() => document.getElementById("uploadMixes").click()}>⬆️ Загрузить миксы</button>
-              <input type="file" id="uploadMixes" accept=".json" style={{display:"none"}} onChange={async e => { /* твой код загрузки миксов */ }} />
+              <input
+                type="file"
+                id="uploadMixes"
+                accept=".json"
+                style={{ display: "none" }}
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const text = await file.text();
+                  try {
+                    const data = JSON.parse(text);
+                    for (const mix of data) {
+                      await fetch("/api/mixes", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(mix)
+                      });
+                    }
+                    alert("✅ Миксы успешно восстановлены");
+                    fetch("/api/mixes").then(r => r.json()).then(setMixes);
+                  } catch {
+                    alert("⚠️ Ошибка при загрузке файла");
+                  }
+                }}
+              />
             </div>
           </div>
         </div>
@@ -334,5 +370,4 @@ function App() {
   );
 }
 
-// ←←← САМАЯ ВАЖНАЯ СТРОКА — ОБЯЗАТЕЛЬНО В КОНЦЕ ФАЙЛА! ←←←
 ReactDOM.render(<App />, document.getElementById("root"));
