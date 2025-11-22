@@ -37,16 +37,9 @@ function App() {
   const [likes, setLikes] = useState({});
   const [banned, setBanned] = useState([]);
   const [collapsed, setCollapsed] = useState({});
-  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/library").then(r => r.json()).then(data => {
-      setBrands(data);
-      const init = {};
-      (data || []).forEach(b => { init[b.id] = true; });
-      setCollapsed(init);
-    }).catch(console.error);
-
+    fetch("/api/library").then(r => r.json()).then(setBrands).catch(console.error);
     fetch("/api/mixes").then(r => r.json()).then(setMixes).catch(console.error);
     try { setBanned(JSON.parse(localStorage.getItem("bannedWords") || "[]")); } catch {}
   }, []);
@@ -81,6 +74,7 @@ function App() {
 
   // === BUILDER ===
   const [parts, setParts] = useState([]);
+  const [search, setSearch] = useState("");
   const total = parts.reduce((a, b) => a + b.percent, 0);
   const avg = parts.length && total > 0 ? Math.round(parts.reduce((a, p) => a + p.percent * p.strength, 0) / total) : 0;
   const remaining = Math.max(0, 100 - total);
@@ -119,171 +113,364 @@ function App() {
 
   const saveMix = async () => {
     if (total !== 100) return alert("Сумма процентов должна быть 100%");
-    const title = prompt("Назови свой микс 🔥", `Микс от ${CURRENT_USER_NAME}`);
+    const title = prompt("Введите название микса:");
     if (!title) return;
-
-    const mixData = {
-      name: title.trim(),
-      author: CURRENT_USER_NAME,
-      authorId: CURRENT_USER_ID,
-      parts: parts.map(p => ({ brandId: p.brandId, flavorId: p.flavorId, name: p.name, percent: p.percent, taste: p.taste, strength: p.strength })),
-      strength: avg,
-      taste: finalTaste,
-      createdAt: new Date().toISOString()
-    };
-
-    const r = await fetch("/api/mixes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mixData)
-    });
-
-    if (r.ok) {
-      alert("Микс сохранён в сообщество!");
-      setParts([]);
-      reloadMixes();
-      setTab("community");
-    } else {
-      alert("Ошибка сохранения :(");
-    }
+    const bad = banned.find(w => title.toLowerCase().includes(String(w).toLowerCase()));
+    if (bad) return alert(`❌ Запрещённое слово: "${bad}"`);
+    const mix = { name: title.trim(), author: CURRENT_USER_NAME, flavors: parts, avgStrength: avg, finalTaste };
+    const r = await fetch("/api/mixes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mix) });
+    const j = await r.json();
+    if (j.success) { alert("✅ Микс сохранён"); setParts([]); reloadMixes(); }
   };
 
-  const filteredBrands = brands.filter(brand => {
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return brand.name.toLowerCase().includes(q) || brand.flavors.some(f => f.name.toLowerCase().includes(q));
-  });
+  // === ADMIN ===
+  const [brandName, setBrandName] = useState("");
+  const [flavorName, setFlavorName] = useState("");
+  const [flavorTaste, setFlavorTaste] = useState("");
+  const [flavorType, setFlavorType] = useState("");
+  const [flavorStrength, setFlavorStrength] = useState(5);
+  const [brandForFlavor, setBrandForFlavor] = useState("");
+
+  const saveLibrary = async (lib) => {
+    await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-id": CURRENT_USER_ID || "" }, body: JSON.stringify(lib) });
+  };
+
+  const addBrand = () => {
+    const name = brandName.trim();
+    if (!name) return;
+    const id = name.toLowerCase().replace(/\s+/g, "-");
+    const newLib = [...brands, { id, name, hidden: false, flavors: [] }];
+    setBrands(newLib);
+    saveLibrary(newLib);
+    setBrandName("");
+  };
+
+  const addFlavorAdmin = () => {
+    const b = brands.find(x => x.id === brandForFlavor);
+    if (!b) return;
+    const name = flavorName.trim();
+    if (!name) return;
+    const fl = {
+      id: name.toLowerCase().replace(/\s+/g, "-"),
+      name,
+      type: flavorType,
+      strength: flavorStrength,
+      taste: flavorTaste,
+      hidden: false
+    };
+    const newLib = brands.map(x => x.id === b.id ? { ...x, flavors: [...x.flavors, fl] } : x);
+    setBrands(newLib);
+    saveLibrary(newLib);
+    setFlavorName(""); setFlavorType(""); setFlavorTaste("");
+  };
+
+  const toggleHidden = (bid, fid) => {
+    const newLib = brands.map(b => {
+      if (b.id !== bid) return b;
+      if (!fid) return { ...b, hidden: !b.hidden };
+      return { ...b, flavors: b.flavors.map(f => f.id === fid ? { ...f, hidden: !f.hidden } : f) };
+    });
+    setBrands(newLib); saveLibrary(newLib);
+  };
+
+  const delBrand = id => {
+    const newLib = brands.filter(b => b.id !== id);
+    setBrands(newLib);
+    saveLibrary(newLib);
+  };
+
+  const deleteFlavor = (bid, fid) => {
+    if (!confirm("Удалить этот вкус?")) return;
+    const newLib = brands.map(b => b.id === bid ? { ...b, flavors: b.flavors.filter(f => f.id !== fid) } : b);
+    setBrands(newLib);
+    saveLibrary(newLib);
+  };
+
+  // === COMMUNITY (Миксы) ===
+  const tasteCategories = Array.from(new Set(mixes.map(m => (m.finalTaste || "").toLowerCase()).filter(Boolean)));
+  const [pref, setPref] = useState("all");
+  const [strength, setStrength] = useState(5);
+  const filteredMixes = mixes
+    .filter(m => pref === "all" || (m.finalTaste || "").toLowerCase().includes(pref))
+    .filter(m => Math.abs((m.avgStrength || 0) - strength) <= 1);
 
   return (
     <div className="container">
-      <header className="title with-icon">Кальянный Миксер</header>
-
+      <header className="title">Кальянный Миксер</header>
       <div className="tabs">
-        <button className={`tab-btn ${tab === "builder" ? "active" : ""}`} onClick={() => { setTab("builder"); setSearch(""); }}>
-          <span className="ico ico-flame"></span> Конструктор
-        </button>
-        <button className={`tab-btn ${tab === "community" ? "active" : ""}`} onClick={() => { setTab("community"); setSearch(""); }}>
-          <span className="ico ico-star"></span> Сообщество
-        </button>
-        {IS_ADMIN && (
-          <button className={`tab-btn ${tab === "admin" ? "active" : ""}`} onClick={() => setTab("admin")}>
-            <span className="ico ico-shield"></span> Админка
-          </button>
-        )}
+        <button className={"tab-btn" + (tab === 'community' ? ' active' : '')} onClick={() => setTab('community')}>Миксы</button>
+        <button className={"tab-btn" + (tab === 'builder' ? ' active' : '')} onClick={() => setTab('builder')}>Конструктор</button>
+        {IS_ADMIN && <button className={"tab-btn" + (tab === 'admin' ? ' active' : '')} onClick={() => setTab('admin')}>Админ</button>}
       </div>
 
-      {tab === "builder" && (
-        <>
-          <div className="card glow" style={{marginBottom:"16px"}}>
-            <input
-              type="text"
-              placeholder="🔥 Поиск по вкусу или бренду..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width:"100%",
-                padding:"16px",
-                fontSize:"17px",
-                border:"none",
-                borderRadius:"14px",
-                background:"rgba(255,255,255,0.1)",
-                color:"white",
-                backdropFilter:"blur(8px)"
-              }}
-            />
-          </div>
-
-          <div className="card">
-            <div className="hd">
-              <h3>Текущий микс ({total}% / 100%)</h3>
-              <div style={{display:"flex",gap:"12px",marginTop:"8px"}}>
-                <div>Крепость: <strong>{avg}</strong></div>
-                <div>Вкус: <strong style={{color:tasteColor(finalTaste)}}>{finalTaste || "—"}</strong></div>
-              </div>
+      {/* === COMMUNITY === */}
+      {tab === 'community' && (
+        <div className="card">
+          <div className="hd"><h3>Рекомендации</h3><p className="desc">Выберите настроение и крепость</p></div>
+          <div className="bd">
+            <div className="grid-2">
+              <button className={"btn " + (pref === 'all' ? 'accent' : '')} onClick={() => setPref('all')}>Все</button>
+              {tasteCategories.map(t => (
+                <button key={t} className={"btn " + (pref === t ? 'accent' : '')} onClick={() => setPref(t)}>{t}</button>
+              ))}
             </div>
-
-            <div className="builder-parts">
-              {parts.length === 0 && <p style={{textAlign:"center",color:"#888",margin:"20px 0"}}>Добавь вкусы ↓</p>}
-              {parts.map(p => (
-                <div key={p.key} className="slider-row">
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:"600"}}>{p.name}</div>
-                    <div style={{fontSize:"12px",opacity:0.7}}>{p.taste} • {p.strength}</div>
+            <div className="sep"></div>
+            <div>Крепость: <b>{strength}</b></div>
+            <input type="range" min="1" max="10" value={strength} onChange={e => setStrength(+e.target.value)} />
+            <div className="sep"></div>
+            <div className="grid">
+              {filteredMixes.map(m => (
+                <div key={m.id} className="mix-card">
+                  <div className="row between">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{m.name}</div>
+                      <div className="tiny muted">от {m.author}</div>
+                    </div>
+                    <div className="row">
+                      <button className={"btn small " + (likes[m.id] ? 'accent' : '')} onClick={() => toggleLike(m.id)}>❤ {m.likes}</button>
+                      {IS_ADMIN && <button className="btn small danger" onClick={() => deleteMix(m.id)}>✕</button>}
+                    </div>
                   </div>
-                  <div className="control">
-                    <input type="range" min="0" max="100" value={p.percent} onChange={e=>updatePct(p.key,+e.target.value)} style={{flex:1}} />
-                    <input type="number" min="0" max="100" value={p.percent} onChange={e=>updatePct(p.key,+e.target.value||0)} style={{width:"50px",textAlign:"center"}} />
-                    <button className="btn small danger" onClick={()=>removePart(p.key)}>✕</button>
+                  <div className="tiny">Крепость: <b>{m.avgStrength}</b></div>
+                  <div className="row" style={{ flexWrap: "wrap", gap: "6px", margin: "6px 0" }}>
+                    <span className="badge" style={{ background: tasteColor(m.finalTaste), color: "#000", border: "none" }}>{m.finalTaste}</span>
                   </div>
+                  <div className="tiny muted">Состав: {m.flavors.map(p => `${p.name} ${p.percent}%`).join(' + ')}</div>
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
 
-            {total === 100 && <button className="btn accent large" onClick={saveMix} style={{marginTop:"16px",width:"100%"}}>Сохранить микс в сообщество</button>}
-            {total !== 100 && remaining > 0 && <p style={{textAlign:"center",color:"#f0b85a",marginTop:"12px"}}>Осталось: {remaining}%</p>}
+      {/* === BUILDER === */}
+      {tab === "builder" && (
+        <>
+          <div className="card">
+            <div className="hd"><h3>Поиск по всем вкусам</h3></div>
+            <div className="bd">
+              <input className="input" placeholder="Введите вкус (малина, клубника...)" value={search} onChange={e => setSearch(e.target.value)} />
+              {search && (
+                <div className="search-results">
+                  {brands.flatMap(b =>
+                    b.hidden ? [] :
+                      b.flavors
+                        .filter(f => !f.hidden)
+                        .filter(f => {
+                          const q = search.toLowerCase();
+                          return (
+                            (f.name || "").toLowerCase().includes(q) ||
+                            (f.type || "").toLowerCase().includes(q) ||
+                            (f.taste || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map(f => (
+                          <div key={`${b.id}-${f.id}`} className="flavor-item">
+                            <div><b>{b.name}</b> — {f.name} <div className="tiny muted">{f.type} — {f.taste}</div></div>
+                            <button className="btn" onClick={() => addFlavor(b.id, f)}>+ в микс</button>
+                          </div>
+                        ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="brands-grid">
-            {filteredBrands.map(brand => (
-              <div key={brand.id} className="card brand-box">
-                <div className="brand-head" onClick={()=>setCollapsed(c=>({...c,[brand.id]:!c[brand.id]}))} style={{cursor:"pointer"}}>
-                  <h3 className="brand-name">{brand.name}</h3>
-                  <span className={`arrow ${collapsed[brand.id]?"up":"down"}`}>▼</span>
-                </div>
-
-                {!collapsed[brand.id] && (
-                  <div className="flavors">
-                    {brand.flavors.map(fl => (
-                      <div key={fl.id} className="flavor" onClick={()=>addFlavor(brand.id,fl)}
-                        style={{cursor:"pointer",padding:"10px",borderRadius:"8px",margin:"4px 0",background:"rgba(255,255,255,0.05)"}}>
-                        <div style={{fontWeight:"600"}}>{fl.name}</div>
-                        <div style={{fontSize:"12px",opacity:0.8}}>
-                          <span style={{color:tasteColor(fl.taste)}}>{fl.taste}</span> • крепость {fl.strength}
-                        </div>
-                      </div>
-                    ))}
+          <div className="card">
+            <div className="hd"><h3>Бренды</h3></div>
+            <div className="bd">
+              {brands.filter(b => !b.hidden).map(b => (
+                <div key={b.id} className="mix-card">
+                  <div className="row between" onClick={() => setCollapsed(c => ({ ...c, [b.id]: !c[b.id] }))} style={{ cursor: "pointer" }}>
+                    <b>{b.name}</b>
+                    <span className="tiny">{collapsed[b.id] ? "▼" : "▲"}</span>
                   </div>
-                )}
+                  {!collapsed[b.id] && (
+                    <div className="flavor-list">
+                      {b.flavors.filter(f => !f.hidden).map(f => (
+                        <div key={f.id} className="flavor-item">
+                          <div><b>{f.name}</b> <div className="tiny muted">{f.type} — {f.taste}</div></div>
+                          <button className="btn" onClick={() => addFlavor(b.id, f)}>+ в микс</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="hd"><h3>Ваш микс</h3></div>
+            <div className="bd grid">
+              {parts.map(p => (
+                <div key={p.key} className="mix-card">
+                  <div className="row between">
+                    <div><b>{p.name}</b><div className="tiny muted">{p.taste}</div></div>
+                    <button className="btn small" onClick={() => removePart(p.key)}>×</button>
+                  </div>
+                  <input type="range" min="0" max="100" step="5" value={p.percent} onChange={e => updatePct(p.key, +e.target.value)} />
+                  <div className="tiny muted">{p.percent}%</div>
+                </div>
+              ))}
+              <div className="tiny muted">
+                Итого: {total}% (осталось {100 - total}%) • Крепость {avg} • Вкус: {finalTaste}
               </div>
-            ))}
+              <button className={"btn " + (total === 100 ? 'accent' : '')} onClick={saveMix} disabled={total !== 100}>Сохранить</button>
+            </div>
           </div>
         </>
       )}
 
-      {tab === "community" && (
-        <div>
-          {mixes.length === 0 && <p style={{textAlign:"center",padding:"40px",color:"#888"}}>Пока нет миксов :( Создай первый!</p>}
-          {mixes.sort((a,b)=>(b.likes||0)-(a.likes||0)).map(mix=>(
-            <div key={mix.id} className="card mix-card">
-              <div className="hd">
-                <h3 className="mix-title">{mix.name}</h3>
-                <div style={{fontSize:"14px",opacity:0.8}}>от {mix.author} • {new Date(mix.createdAt).toLocaleDateString()}</div>
+                  {/* === ADMIN === */}
+      {IS_ADMIN && tab === "admin" && (
+        <div className="admin-panel">
+          <div className="card">
+            <div className="hd">
+              <h3>Бренды и вкусы</h3>
+              <p className="desc">Добавляйте, скрывайте и удаляйте вкусы и бренды</p>
+            </div>
+
+            <div className="bd">
+              {/* Добавление бренда */}
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <input
+                  className="input"
+                  placeholder="Новый бренд"
+                  value={brandName}
+                  onChange={e => setBrandName(e.target.value)}
+                />
+                <button className="btn" onClick={addBrand}>Добавить бренд</button>
               </div>
-              <div className="mix-parts">
-                {mix.parts.map((p,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0"}}>
-                    <span>{p.name}</span>
-                    <strong>{p.percent}%</strong>
+
+              <div className="sep"></div>
+
+              {/* Добавление вкуса */}
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <select
+                  className="input"
+                  value={brandForFlavor}
+                  onChange={e => setBrandForFlavor(e.target.value)}
+                >
+                  <option value="">Выберите бренд</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+
+                <input
+                  className="input"
+                  placeholder="Название вкуса"
+                  value={flavorName}
+                  onChange={e => setFlavorName(e.target.value)}
+                />
+
+                <input
+                  className="input"
+                  placeholder="Сам вкус (малина, клубника...)"
+                  value={flavorType}
+                  onChange={e => setFlavorType(e.target.value)}
+                />
+
+                <input
+                  className="input"
+                  placeholder="Описание вкуса (сладкий, кислый...)"
+                  value={flavorTaste}
+                  onChange={e => setFlavorTaste(e.target.value)}
+                />
+
+                <label className="tiny">Крепость: {flavorStrength}</label>
+                <input
+                  className="input"
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={flavorStrength}
+                  onChange={e => setFlavorStrength(+e.target.value)}
+                />
+
+                <button className="btn accent" onClick={addFlavorAdmin}>Добавить вкус</button>
+              </div>
+
+              <div className="sep"></div>
+
+              {/* Список брендов */}
+              <div className="grid-2">
+                {brands.map(b => (
+                  <div key={b.id} className="mix-card">
+                    <div
+                      className="row between"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setCollapsed(c => ({ ...c, [b.id]: !c[b.id] }))}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{b.name}</div>
+                        <div className="tiny muted">вкусов: {b.flavors.length}</div>
+                        {b.hidden
+                          ? <div className="badge hidden">скрыт</div>
+                          : <div className="badge ok">доступен</div>}
+                      </div>
+
+                      <div className="grid" style={{ gap: 6, alignItems: "center" }}>
+                        <button
+                          className="btn small ghost"
+                          onClick={(e) => { e.stopPropagation(); toggleHidden(b.id); }}
+                        >
+                          {b.hidden ? "показать" : "скрыть"}
+                        </button>
+
+                        <button
+                          className="btn small danger"
+                          onClick={(e) => { e.stopPropagation(); delBrand(b.id); }}
+                        >
+                          удалить
+                        </button>
+
+                        <span className="tiny">{collapsed[b.id] ? "▼" : "▲"}</span>
+                      </div>
+                    </div>
+
+                    {!collapsed[b.id] && (
+                      <div className="flavor-list" style={{ marginTop: 6 }}>
+                        {(b.flavors || []).map(f => (
+                          <div key={f.id} className="mix-card row between" style={{ marginLeft: 10 }}>
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{f.name}</div>
+                              {f.type && <div className="tiny muted">{f.type}</div>}
+                              {f.taste && <div className="tiny">{f.taste}</div>}
+                              {f.hidden
+                                ? <div className="badge hidden">скрыт</div>
+                                : <div className="badge ok">доступен</div>}
+                            </div>
+                            <div className="grid">
+                              <button
+                                className="btn small ghost"
+                                onClick={(e) => { e.stopPropagation(); toggleHidden(b.id, f.id); }}
+                              >
+                                {f.hidden ? "показать" : "скрыть"}
+                              </button>
+
+                              <button
+                                className="btn small danger"
+                                onClick={(e) => { e.stopPropagation(); deleteFlavor(b.id, f.id); }}
+                              >
+                                удалить
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"12px"}}>
-                <div>Крепость: <strong>{mix.strength}</strong> • Вкус: <strong style={{color:tasteColor(mix.taste)}}>{mix.taste}</strong></div>
-                <button className={`btn like ${likes[mix.id]?"liked":""}`} onClick={()=>toggleLike(mix.id)}>
-                  ❤️ {mix.likes || 0}
-                </button>
-              </div>
-              {IS_ADMIN && <button className="btn small danger" style={{marginTop:"8px"}} onClick={()=>deleteMix(mix.id)}>Удалить</button>}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
 
-      {tab === "admin" && IS_ADMIN && (
-        <div className="admin-panel">
-          <div className="card glow">
+          {/* === РЕЗЕРВНОЕ КОПИРОВАНИЕ === */}
+          <div className="card">
             <div className="hd">
-              <h3 className="h3 with-ico-star">📦 Резервное копирование</h3>
+              <h3>📦 Резервное копирование</h3>
               <p className="desc">Сохраняйте и восстанавливайте данные миксов и вкусов</p>
             </div>
 
@@ -296,7 +483,7 @@ function App() {
                 a.href = URL.createObjectURL(blob);
                 a.download = "library_backup.json";
                 a.click();
-              }}><span className="ico ico-flame"></span>⬇️ Скачать библиотеку</button>
+              }}>⬇️ Скачать библиотеку</button>
 
               <button className="btn accent" onClick={async () => {
                 const res = await fetch("/api/mixes");
@@ -306,7 +493,7 @@ function App() {
                 a.href = URL.createObjectURL(blob);
                 a.download = "mixes_backup.json";
                 a.click();
-              }}><span className="ico ico-star"></span>⬇️ Скачать миксы</button>
+              }}>⬇️ Скачать миксы</button>
 
               <button className="btn" onClick={() => document.getElementById("uploadLibrary").click()}>⬆️ Загрузить библиотеку</button>
               <input
